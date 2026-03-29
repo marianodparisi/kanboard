@@ -298,13 +298,31 @@ function BoardColumn({
   column,
   projects,
   onOpenCard,
+  compactCards,
+  showHints,
+  highlightUrgent,
+  isDropTarget,
+  onDropProject,
+  onDragProject,
 }: {
   column: (typeof visibleColumns)[number];
   projects: KanbanProject[];
   onOpenCard: (project: KanbanProject) => void;
+  compactCards: boolean;
+  showHints: boolean;
+  highlightUrgent: boolean;
+  isDropTarget: boolean;
+  onDropProject: (status: ProjectStatus) => void;
+  onDragProject: (projectId: string | null) => void;
 }) {
   return (
-    <div className={`kanban-column ${column.surface} flex min-h-[68vh] flex-col gap-5 p-5 sm:min-h-[71vh] sm:gap-6 sm:p-6`}>
+    <div
+      className={`kanban-column ${column.surface} flex min-h-[68vh] flex-col gap-5 p-5 transition sm:min-h-[71vh] sm:gap-6 sm:p-6 ${
+        isDropTarget ? "ring-2 ring-[var(--primary)]/30" : ""
+      }`}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={() => onDropProject(column.id)}
+    >
       <div className="flex items-center justify-between px-3">
         <div className="flex items-center gap-4">
           <span className={`h-3 w-3 rounded-full ${column.tone}`} />
@@ -324,14 +342,25 @@ function BoardColumn({
             return (
               <button
                 key={project.id}
-                className={`kanban-card relative block w-full overflow-hidden p-5 text-left transition-transform duration-200 hover:-translate-y-1 sm:p-6 ${
+                className={`kanban-card relative block w-full overflow-hidden text-left transition-transform duration-200 hover:-translate-y-1 ${
+                  compactCards ? "p-4 sm:p-5" : "p-5 sm:p-6"
+                } ${
                   done ? "opacity-85 grayscale-[0.2]" : ""
                 }`}
+                draggable
+                onDragEnd={() => onDragProject(null)}
+                onDragStart={() => onDragProject(project.id)}
                 onClick={() => onOpenCard(project)}
                 type="button"
               >
                 <div className={`absolute bottom-0 left-0 top-0 w-1.5 ${barStyles[project.status]}`} />
-                <div className="flex min-h-[158px] flex-col gap-4 pl-2 sm:min-h-[174px] sm:gap-5">
+                <div
+                  className={`flex flex-col pl-2 ${
+                    compactCards
+                      ? "min-h-[138px] gap-3 sm:min-h-[150px]"
+                      : "min-h-[158px] gap-4 sm:min-h-[174px] sm:gap-5"
+                  }`}
+                >
                   <span className={`nav-font self-start rounded-full px-3 py-1 text-[0.74rem] font-extrabold uppercase tracking-[0.16em] ${tagStyles[project.status]}`}>
                     {cardLabel(project)}
                   </span>
@@ -342,13 +371,18 @@ function BoardColumn({
                   >
                     {project.title}
                   </h3>
+                  {showHints ? (
+                    <p className="nav-font text-xs leading-5 text-[var(--muted-soft)]">
+                      {project.repository}
+                    </p>
+                  ) : null}
                   <div
                     className={`nav-font mt-auto flex items-center justify-between text-[0.92rem] sm:text-[0.98rem] ${
                       done
                         ? "text-[var(--tertiary)]"
                         : onHold
                           ? "text-[var(--hold)]"
-                          : urgent
+                          : urgent && highlightUrgent
                             ? "text-[#ba1a1a]"
                             : "text-[var(--muted-soft)]"
                     }`}
@@ -386,6 +420,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
   const [overlay, setOverlay] = useState<OverlayState>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState<KanbanProject | null>(null);
+  const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [form, setForm] = useState<CreateCardForm>(initialForm);
   const [createError, setCreateError] = useState("");
@@ -407,6 +442,8 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
     return filteredProjects.flatMap((project) =>
       project.tasks.map((task, index) => ({
         id: `${project.id}-${index}`,
+        projectId: project.id,
+        taskIndex: index,
         projectTitle: project.title,
         status: project.status,
         label: task.label,
@@ -433,9 +470,100 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
     }
   }, [overlay]);
 
+  useEffect(() => {
+    const saved = window.localStorage.getItem("kanboard-settings");
+    if (saved) {
+      try {
+        setSettings(JSON.parse(saved));
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("kanboard-settings", JSON.stringify(settings));
+  }, [settings]);
+
   function openCard(project: KanbanProject) {
     setSelectedCard(project);
     setOverlay("card");
+  }
+
+  async function patchProject(
+    projectId: string,
+    body: Record<string, unknown>,
+    options?: { refreshSelected?: boolean },
+  ) {
+    const response = await fetch(`/api/projects/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const json = (await response.json()) as {
+      error?: string;
+      project?: KanbanProject;
+    };
+
+    if (!response.ok || !json.project) {
+      throw new Error(json.error ?? "No se pudo actualizar la tarjeta.");
+    }
+
+    startTransition(() => {
+      setBoard((current) => ({
+        ...current,
+        projects: current.projects.map((project) =>
+          project.id === json.project!.id ? json.project! : project,
+        ),
+      }));
+    });
+
+    if (options?.refreshSelected !== false) {
+      setSelectedCard(json.project);
+    }
+
+    return json.project;
+  }
+
+  async function handleToggleTask(projectId: string, taskIndex: number) {
+    const updated = await patchProject(
+      projectId,
+      { action: "toggle_task", taskIndex },
+      { refreshSelected: true },
+    );
+
+    if (selectedCard?.id === updated.id) {
+      setSelectedCard(updated);
+    }
+  }
+
+  async function handleMoveProject(projectId: string, status: ProjectStatus) {
+    await patchProject(projectId, { action: "move", status });
+  }
+
+  async function handleDropProject(status: ProjectStatus) {
+    if (!draggedProjectId) return;
+    await handleMoveProject(draggedProjectId, status);
+    setDraggedProjectId(null);
+  }
+
+  async function handleSaveCard(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedCard) return;
+
+    const formData = new FormData(event.currentTarget);
+    const tags = String(formData.get("tags") ?? "")
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+    await patchProject(selectedCard.id, {
+      title: String(formData.get("title") ?? ""),
+      repository: String(formData.get("repository") ?? ""),
+      summary: String(formData.get("summary") ?? ""),
+      status: String(formData.get("status") ?? selectedCard.status),
+      priority: String(formData.get("priority") ?? selectedCard.priority),
+      tags,
+    });
   }
 
   async function handleCreateCard(event: React.FormEvent<HTMLFormElement>) {
@@ -644,8 +772,14 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
                 <BoardColumn
                   key={column.id}
                   column={column}
+                  compactCards={settings.compactCards}
+                  highlightUrgent={settings.highlightUrgent}
+                  isDropTarget={draggedProjectId !== null}
                   onOpenCard={openCard}
+                  onDragProject={setDraggedProjectId}
+                  onDropProject={handleDropProject}
                   projects={columnProjects(filteredProjects, column.id)}
+                  showHints={settings.showHints}
                 />
               ))}
             </div>
@@ -656,9 +790,11 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {tasksView.length ? (
               tasksView.map((task) => (
-                <div
+                <button
                   key={task.id}
-                  className="rounded-[1.5rem] bg-white p-5 shadow-[0_8px_20px_rgba(24,28,30,0.05)]"
+                  className="rounded-[1.5rem] bg-white p-5 text-left shadow-[0_8px_20px_rgba(24,28,30,0.05)]"
+                  onClick={() => handleToggleTask(task.projectId, task.taskIndex)}
+                  type="button"
                 >
                   <p className="nav-font text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
                     {task.projectTitle}
@@ -669,7 +805,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
                   <p className="nav-font mt-3 text-sm text-[var(--muted-soft)]">
                     {task.done ? "Completada" : "Pendiente"} · {task.status.replaceAll("_", " ")}
                   </p>
-                </div>
+                </button>
               ))
             ) : (
               <div className="nav-font rounded-[1.5rem] bg-white p-6 text-[var(--muted)] shadow-[0_8px_20px_rgba(24,28,30,0.05)]">
@@ -804,6 +940,22 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
         >
           <div className="space-y-5">
             <div className="flex flex-wrap gap-2">
+              {visibleColumns.map((column) => (
+                <button
+                  key={column.id}
+                  className={`nav-font rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
+                    selectedCard.status === column.id
+                      ? "bg-[#eef2ff] text-[var(--primary)]"
+                      : "bg-[#eceff3] text-[var(--muted)]"
+                  }`}
+                  onClick={() => handleMoveProject(selectedCard.id, column.id)}
+                  type="button"
+                >
+                  {column.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
               {selectedCard.tags.map((tag) => (
                 <span
                   key={tag}
@@ -840,6 +992,62 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
                 )}
               </ul>
             </div>
+            <form className="space-y-3 rounded-[1.25rem] bg-[#f7f9fb] p-4" onSubmit={handleSaveCard}>
+              <p className="nav-font text-xs uppercase tracking-[0.16em] text-[var(--muted-soft)]">
+                Edit card
+              </p>
+              <input
+                className="w-full rounded-[1rem] border-none bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
+                defaultValue={selectedCard.title}
+                name="title"
+                type="text"
+              />
+              <input
+                className="w-full rounded-[1rem] border-none bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
+                defaultValue={selectedCard.repository}
+                name="repository"
+                type="text"
+              />
+              <textarea
+                className="min-h-24 w-full rounded-[1rem] border-none bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
+                defaultValue={selectedCard.summary}
+                name="summary"
+              />
+              <input
+                className="w-full rounded-[1rem] border-none bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
+                defaultValue={selectedCard.tags.join(", ")}
+                name="tags"
+                type="text"
+              />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <select
+                  className="rounded-[1rem] border-none bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
+                  defaultValue={selectedCard.status}
+                  name="status"
+                >
+                  <option value="backlog">Backlog</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="on_hold">On Hold</option>
+                  <option value="review">Review</option>
+                  <option value="done">Done</option>
+                </select>
+                <select
+                  className="rounded-[1rem] border-none bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
+                  defaultValue={selectedCard.priority}
+                  name="priority"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+              <button
+                className="nav-font w-full rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] px-4 py-3 text-sm font-semibold text-white"
+                type="submit"
+              >
+                Guardar cambios
+              </button>
+            </form>
           </div>
         </Overlay>
       ) : null}

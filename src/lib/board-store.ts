@@ -6,6 +6,8 @@ import {
   type AgentUpdatePayload,
   type BoardData,
   type KanbanProject,
+  type ProjectTask,
+  type ProjectUpdatePayload,
   statuses,
 } from "@/lib/types";
 
@@ -191,4 +193,70 @@ export async function upsertProjectFromAgent(payload: AgentUpdatePayload) {
     project: board.projects.find((project) => project.id === nextProject.id)!,
     activity: activityEntry,
   };
+}
+
+export async function updateProject(projectId: string, updates: ProjectUpdatePayload) {
+  const board = await readBoardData();
+  const projectIndex = board.projects.findIndex((project) => project.id === projectId);
+
+  if (projectIndex < 0) {
+    throw new Error("Proyecto no encontrado.");
+  }
+
+  const current = board.projects[projectIndex];
+  const nextStatus =
+    updates.status && statuses.includes(updates.status) ? updates.status : current.status;
+
+  const nextProject: KanbanProject = {
+    ...current,
+    ...updates,
+    status: nextStatus,
+    tags: updates.tags ?? current.tags,
+    details: updates.details ?? current.details,
+    filesChanged: updates.filesChanged ?? current.filesChanged,
+    tasks: updates.tasks ?? current.tasks,
+    lastUpdate: new Date().toISOString(),
+  };
+
+  board.projects[projectIndex] = nextProject;
+  board.workspace.lastSyncedAt = nextProject.lastUpdate;
+  board.activity.unshift({
+    id: `${projectId}-${Date.now()}`,
+    projectId,
+    projectTitle: nextProject.title,
+    createdAt: nextProject.lastUpdate,
+    source: "cli",
+    author: "Maria",
+    summary: `Se actualizo la tarjeta "${nextProject.title}".`,
+  });
+  board.activity = board.activity.slice(0, 12);
+
+  await writeBoardData(board);
+
+  return nextProject;
+}
+
+export async function moveProject(projectId: string, status: KanbanProject["status"]) {
+  return updateProject(projectId, { status });
+}
+
+export async function toggleProjectTask(projectId: string, taskIndex: number) {
+  const board = await readBoardData();
+  const projectIndex = board.projects.findIndex((project) => project.id === projectId);
+
+  if (projectIndex < 0) {
+    throw new Error("Proyecto no encontrado.");
+  }
+
+  const current = board.projects[projectIndex];
+
+  if (taskIndex < 0 || taskIndex >= current.tasks.length) {
+    throw new Error("Tarea no encontrada.");
+  }
+
+  const nextTasks: ProjectTask[] = current.tasks.map((task, index) =>
+    index === taskIndex ? { ...task, done: !task.done } : task,
+  );
+
+  return updateProject(projectId, { tasks: nextTasks });
 }

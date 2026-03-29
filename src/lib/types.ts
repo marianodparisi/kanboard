@@ -66,3 +66,16 @@ export type AgentUpdatePayload = {
   source?: ActivityItem["source"];
   priority?: KanbanProject["priority"];
 };
+
+export type ProjectUpdatePayload = {
+  title?: string;
+  repository?: string;
+  owner?: string;
+  status?: ProjectStatus;
+  tags?: string[];
+  summary?: string;
+  details?: string[];
+  filesChanged?: string[];
+  tasks?: ProjectTask[];
+  priority?: KanbanProject["priority"];
+};
