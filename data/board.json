@@ -3,7 +3,7 @@
     "name": "Kanban GitHub Agent",
     "description": "Centro operativo para seguir proyectos, cambios aplicados por agente y estado de entrega.",
     "agentChannel": "POST /api/agent-updates",
-    "lastSyncedAt": "2026-03-29T18:30:00.000Z"
+    "lastSyncedAt": "2026-03-29T23:00:23.580Z"
   },
   "projects": [
     {
@@ -12,7 +12,12 @@
       "repository": "maria/kanban-github-agent",
       "owner": "Maria",
       "status": "in_progress",
-      "tags": ["nextjs", "kanban", "github", "agent"],
+      "tags": [
+        "nextjs",
+        "kanban",
+        "github",
+        "agent"
+      ],
       "summary": "Base inicial del tablero para centralizar proyectos, estados y actualizaciones ejecutadas desde Codex.",
       "lastUpdate": "2026-03-29T18:30:00.000Z",
       "priority": "high",
@@ -21,11 +26,23 @@
         "Modelo de tablero preparado para recibir cambios desde API o CLI.",
         "Vista inicial enfocada en proyectos activos, tags y actividad reciente."
       ],
-      "filesChanged": ["src/app/page.tsx", "src/app/api/agent-updates/route.ts"],
+      "filesChanged": [
+        "src/app/page.tsx",
+        "src/app/api/agent-updates/route.ts"
+      ],
       "tasks": [
-        { "label": "Definir estructura de proyectos y estados", "done": true },
-        { "label": "Exponer endpoint para actualizaciones del agente", "done": true },
-        { "label": "Conectar con OAuth/App de GitHub", "done": false }
+        {
+          "label": "Definir estructura de proyectos y estados",
+          "done": true
+        },
+        {
+          "label": "Exponer endpoint para actualizaciones del agente",
+          "done": true
+        },
+        {
+          "label": "Conectar con OAuth/App de GitHub",
+          "done": false
+        }
       ]
     },
     {
@@ -34,24 +51,48 @@
       "repository": "maria/github-sync-layer",
       "owner": "Maria",
       "status": "on_hold",
-      "tags": ["github-api", "webhooks", "automation"],
+      "tags": [
+        "github-api",
+        "webhooks",
+        "automation"
+      ],
       "summary": "Siguiente etapa para traer eventos reales de repositorios y mantener el tablero alineado con PRs, issues y commits.",
-      "lastUpdate": "2026-03-28T15:00:00.000Z",
+      "lastUpdate": "2026-03-29T23:00:23.580Z",
       "priority": "medium",
       "details": [
         "Agregar GitHub App o token personal para leer repositorios y proyectos.",
         "Mapear issues y PRs a tarjetas del tablero.",
         "Resolver deduplicacion cuando el mismo proyecto se actualiza por CLI y por webhook."
       ],
-      "filesChanged": ["README.md"],
+      "filesChanged": [
+        "README.md"
+      ],
       "tasks": [
-        { "label": "Diseñar credenciales para GitHub", "done": false },
-        { "label": "Crear endpoint de sincronizacion", "done": false },
-        { "label": "Agregar filtros por repositorio", "done": false }
+        {
+          "label": "Diseñar credenciales para GitHub",
+          "done": false
+        },
+        {
+          "label": "Crear endpoint de sincronizacion",
+          "done": false
+        },
+        {
+          "label": "Agregar filtros por repositorio",
+          "done": false
+        }
       ]
     }
   ],
   "activity": [
+    {
+      "id": "github-sync-layer-1774825223580",
+      "projectId": "github-sync-layer",
+      "projectTitle": "GitHub Sync Layer",
+      "createdAt": "2026-03-29T23:00:23.580Z",
+      "source": "cli",
+      "author": "Maria",
+      "summary": "Se actualizo la tarjeta \"GitHub Sync Layer\"."
+    },
     {
       "id": "activity-bootstrap",
       "projectId": "kanban-control-center",

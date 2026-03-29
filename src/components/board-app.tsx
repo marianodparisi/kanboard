@@ -71,6 +71,7 @@ type OverlayState =
   | "profile"
   | "card"
   | "add"
+  | "login"
   | null;
 
 type CreateCardForm = {
@@ -92,6 +93,9 @@ const initialForm: CreateCardForm = {
   summary: "",
   tags: "",
 };
+
+const HARDCODED_EMAIL = "marianoparisi59gmail.com";
+const HARDCODED_PASSWORD = "kanboard123";
 
 function columnProjects(projects: KanbanProject[], column: ProjectStatus) {
   if (column === "in_progress") {
@@ -419,6 +423,11 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
   const [activeTab, setActiveTab] = useState<AppTab>("projects");
   const [overlay, setOverlay] = useState<OverlayState>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
+  const [loginEmail, setLoginEmail] = useState(HARDCODED_EMAIL);
+  const [loginPassword, setLoginPassword] = useState(HARDCODED_PASSWORD);
+  const [loginError, setLoginError] = useState("");
   const [selectedCard, setSelectedCard] = useState<KanbanProject | null>(null);
   const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -477,11 +486,49 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
         setSettings(JSON.parse(saved));
       } catch {}
     }
+
+    const savedAuth = window.localStorage.getItem("kanboard-auth-email");
+    if (savedAuth) {
+      setIsAuthenticated(true);
+      setAuthEmail(savedAuth);
+    }
   }, []);
 
   useEffect(() => {
     window.localStorage.setItem("kanboard-settings", JSON.stringify(settings));
   }, [settings]);
+
+  function initialsFromEmail(email: string) {
+    const [left = "M", right = "M"] = email
+      .replace(/[^a-zA-Z0-9]/g, " ")
+      .split(" ")
+      .filter(Boolean);
+
+    return `${left[0] ?? "M"}${right[0] ?? left[1] ?? "M"}`.toUpperCase();
+  }
+
+  function handleLogin(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (loginEmail === HARDCODED_EMAIL && loginPassword === HARDCODED_PASSWORD) {
+      setIsAuthenticated(true);
+      setAuthEmail(loginEmail);
+      setLoginError("");
+      window.localStorage.setItem("kanboard-auth-email", loginEmail);
+      setOverlay(null);
+      return;
+    }
+
+    setLoginError("Credenciales invalidas.");
+  }
+
+  function handleLogout() {
+    setIsAuthenticated(false);
+    setAuthEmail("");
+    setIsUserMenuOpen(false);
+    setOverlay(null);
+    window.localStorage.removeItem("kanboard-auth-email");
+  }
 
   function openCard(project: KanbanProject) {
     setSelectedCard(project);
@@ -687,19 +734,38 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
             </label>
             <div className="relative">
               <button
-                aria-expanded={isUserMenuOpen}
+                aria-expanded={isAuthenticated ? isUserMenuOpen : overlay === "login"}
                 className="flex items-center gap-3 rounded-full bg-white px-2 py-1.5 shadow-[0_8px_20px_rgba(24,28,30,0.06)]"
-                onClick={() => setIsUserMenuOpen((current) => !current)}
+                onClick={() => {
+                  if (isAuthenticated) {
+                    setIsUserMenuOpen((current) => !current);
+                  } else {
+                    setOverlay("login");
+                  }
+                }}
                 type="button"
               >
                 <div className="headline-font flex h-10 w-10 items-center justify-center rounded-full bg-[#eef2ff] text-sm font-bold text-[var(--primary)]">
-                  MM
+                  {isAuthenticated ? initialsFromEmail(authEmail) : "IN"}
                 </div>
-                <span className="hidden text-[var(--muted)] sm:block">
-                  <IconChevronDown />
-                </span>
+                <div className="hidden sm:block">
+                  {isAuthenticated ? (
+                    <span className="nav-font text-sm font-medium text-[var(--foreground)]">
+                      {authEmail}
+                    </span>
+                  ) : (
+                    <span className="nav-font text-sm font-medium text-[var(--primary)]">
+                      Login
+                    </span>
+                  )}
+                </div>
+                {isAuthenticated ? (
+                  <span className="hidden text-[var(--muted)] sm:block">
+                    <IconChevronDown />
+                  </span>
+                ) : null}
               </button>
-              {isUserMenuOpen ? (
+              {isAuthenticated && isUserMenuOpen ? (
                 <div className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-44 rounded-[1.5rem] bg-white p-2 shadow-[0_18px_40px_rgba(24,28,30,0.12)]">
                   <button
                     className="nav-font flex w-full items-center gap-3 rounded-[1rem] px-3 py-2.5 text-left text-[0.95rem] text-[var(--foreground)] transition hover:bg-[#f4f6f9]"
@@ -736,9 +802,16 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
                     type="button"
                   >
                     <div className="headline-font flex h-7 w-7 items-center justify-center rounded-full bg-[#eef2ff] text-[0.72rem] font-bold text-[var(--primary)]">
-                      MM
+                      {initialsFromEmail(authEmail)}
                     </div>
                     Profile
+                  </button>
+                  <button
+                    className="nav-font flex w-full items-center gap-3 rounded-[1rem] px-3 py-2.5 text-left text-[0.95rem] text-[#ba1a1a] transition hover:bg-[#fdf1f1]"
+                    onClick={handleLogout}
+                    type="button"
+                  >
+                    Logout
                   </button>
                 </div>
               ) : null}
@@ -921,14 +994,53 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
         >
           <div className="rounded-[1.75rem] bg-[#f7f9fb] p-6">
             <div className="headline-font flex h-16 w-16 items-center justify-center rounded-full bg-[#eef2ff] text-xl font-bold text-[var(--primary)]">
-              MM
+              {initialsFromEmail(authEmail || HARDCODED_EMAIL)}
             </div>
             <h3 className="headline-font mt-4 text-xl font-bold text-[var(--foreground)]">Maria</h3>
+            <p className="nav-font mt-2 text-sm text-[var(--muted-soft)]">
+              {authEmail || HARDCODED_EMAIL}
+            </p>
             <p className="nav-font mt-2 text-sm text-[var(--muted)]">Owner · Workspace principal</p>
             <p className="nav-font mt-5 text-sm leading-6 text-[var(--muted-soft)]">
               Sesion simulada como usuaria logueada. Desde aca podemos luego conectar autenticacion real.
             </p>
           </div>
+        </Overlay>
+      ) : null}
+
+      {overlay === "login" ? (
+        <Overlay
+          onClose={() => setOverlay(null)}
+          subtitle="Acceso temporal hardcodeado para avanzar rapido."
+          title="Login"
+        >
+          <form className="space-y-4" onSubmit={handleLogin}>
+            <label className="nav-font block text-sm text-[var(--foreground)]">
+              Email
+              <input
+                className="mt-2 w-full rounded-[1rem] border-none bg-[#f4f6f9] px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
+                onChange={(event) => setLoginEmail(event.target.value)}
+                type="text"
+                value={loginEmail}
+              />
+            </label>
+            <label className="nav-font block text-sm text-[var(--foreground)]">
+              Password
+              <input
+                className="mt-2 w-full rounded-[1rem] border-none bg-[#f4f6f9] px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
+                onChange={(event) => setLoginPassword(event.target.value)}
+                type="password"
+                value={loginPassword}
+              />
+            </label>
+            {loginError ? <p className="nav-font text-sm text-[#ba1a1a]">{loginError}</p> : null}
+            <button
+              className="nav-font w-full rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] px-4 py-3 text-sm font-semibold text-white"
+              type="submit"
+            >
+              Entrar
+            </button>
+          </form>
         </Overlay>
       ) : null}
 
