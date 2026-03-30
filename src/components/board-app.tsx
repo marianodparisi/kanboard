@@ -6,6 +6,7 @@ import {
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -275,18 +276,29 @@ function Overlay({
   children: React.ReactNode;
   onClose: () => void;
 }) {
+  const [closing, setClosing] = useState(false);
+
+  function handleClose() {
+    setClosing(true);
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-[rgba(24,28,30,0.16)] backdrop-blur-[2px]">
-      <button aria-label="Cerrar" className="flex-1" onClick={onClose} type="button" />
-      <aside className="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-[-20px_0_50px_rgba(24,28,30,0.12)]">
+    <div
+      className={`fixed inset-0 z-50 flex justify-end ${closing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"} bg-[rgba(24,28,30,0.16)] backdrop-blur-[2px]`}
+    >
+      <button aria-label="Cerrar" className="flex-1" onClick={handleClose} type="button" />
+      <aside
+        className={`h-full w-full max-w-md overflow-y-auto bg-[rgba(247,250,252,0.92)] backdrop-blur-[28px] p-8 shadow-[-24px_0_60px_rgba(24,28,30,0.10)] ${closing ? "animate-modal-dialog-out" : "animate-drawer-slide-in"}`}
+        onAnimationEnd={() => { if (closing) onClose(); }}
+      >
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h2 className="headline-font text-2xl font-bold text-[var(--foreground)]">{title}</h2>
             {subtitle ? <p className="nav-font mt-2 text-sm text-[var(--muted)]">{subtitle}</p> : null}
           </div>
           <button
-            className="nav-font rounded-full bg-[#f4f6f9] px-3 py-1.5 text-sm text-[var(--foreground)]"
-            onClick={onClose}
+            className="nav-font rounded-full bg-[var(--surface-container)] px-4 py-1.5 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-variant)] active:scale-[0.97]"
+            onClick={handleClose}
             type="button"
           >
             Cerrar
@@ -294,6 +306,455 @@ function Overlay({
         </div>
         {children}
       </aside>
+    </div>
+  );
+}
+
+function CenteredPanel({
+  title,
+  subtitle,
+  onClose,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const [closing, setClosing] = useState(false);
+
+  function handleClose() {
+    setClosing(true);
+  }
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-[rgba(24,28,30,0.28)] backdrop-blur-[4px] ${closing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"}`}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+    >
+      <div
+        className={`w-full max-w-md overflow-hidden rounded-[2rem] bg-[rgba(247,250,252,0.97)] backdrop-blur-[32px] shadow-[0_32px_80px_rgba(24,28,30,0.18),0_8px_32px_rgba(24,28,30,0.08)] ${closing ? "animate-modal-dialog-out" : "animate-modal-dialog-in"}`}
+        onAnimationEnd={() => { if (closing) onClose(); }}
+      >
+        <div className="flex items-start justify-between gap-4 px-7 pt-7 pb-5">
+          <div>
+            <h2 className="headline-font text-xl font-extrabold text-[var(--foreground)]">{title}</h2>
+            {subtitle ? <p className="nav-font mt-1 text-sm text-[var(--muted-soft)]">{subtitle}</p> : null}
+          </div>
+          <button
+            aria-label="Cerrar"
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[var(--surface-container)] text-[var(--muted)] transition hover:bg-[var(--surface-variant)] hover:text-[var(--foreground)] active:scale-[0.93]"
+            onClick={handleClose}
+            type="button"
+          >
+            <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+            </svg>
+          </button>
+        </div>
+        <div className="px-7 pb-7">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function IconEdit() {
+  return (
+    <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function Dropdown({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: Array<{ value: string; label: string; cls: string }>;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  const current = options.find((o) => o.value === value) ?? options[0];
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        className={`flex items-center gap-1.5 rounded-full border-none px-4 py-1.5 text-xs font-extrabold uppercase tracking-[0.14em] transition hover:opacity-80 ${current.cls}`}
+        onClick={() => setOpen((v) => !v)}
+        type="button"
+      >
+        {current.label}
+        <svg aria-hidden="true" className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24">
+          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
+        </svg>
+      </button>
+      {open && (
+        <div className="animate-dropdown-reveal absolute left-0 top-full z-20 mt-1.5 min-w-[160px] overflow-hidden rounded-[1.25rem] bg-[rgba(247,250,252,0.98)] shadow-[0_16px_48px_rgba(24,28,30,0.14),0_4px_12px_rgba(24,28,30,0.06)] backdrop-blur-[24px]">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              className={`block w-full px-4 py-2.5 text-left text-xs font-extrabold uppercase tracking-[0.13em] transition hover:bg-[var(--surface-low)] ${
+                opt.value === value ? "opacity-100" : "opacity-55 hover:opacity-80"
+              } ${opt.cls.replace(/bg-\[[^\]]+\]/, "bg-transparent")}`}
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+              type="button"
+            >
+              {opt.value === value && (
+                <span className="mr-1.5 opacity-70">✓</span>
+              )}
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CardModal({
+  project,
+  onClose,
+  onMove,
+  onPatch,
+}: {
+  project: KanbanProject;
+  onClose: () => void;
+  onMove: (projectId: string, status: ProjectStatus) => void;
+  onPatch: (fields: Record<string, unknown>) => Promise<void>;
+}) {
+  const [editStatus, setEditStatus] = useState<ProjectStatus>(project.status);
+  const [editPriority, setEditPriority] = useState<"low" | "medium" | "high">(project.priority);
+  const [editing, setEditing] = useState<null | "title" | "summary" | "tags">(null);
+  const [editTitle, setEditTitle] = useState(project.title);
+  const [editRepo, setEditRepo] = useState(project.repository);
+  const [editSummary, setEditSummary] = useState(project.summary);
+  const [editTags, setEditTags] = useState(project.tags.join(", "));
+  const [newTaskLabel, setNewTaskLabel] = useState("");
+  const [addingTask, setAddingTask] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  function handleClose() {
+    setClosing(true);
+  }
+
+  useEffect(() => {
+    setEditStatus(project.status);
+    setEditPriority(project.priority);
+    setEditTitle(project.title);
+    setEditRepo(project.repository);
+    setEditSummary(project.summary);
+    setEditTags(project.tags.join(", "));
+  }, [project]);
+
+  const statusOptions: Array<{ value: ProjectStatus; label: string; cls: string }> = [
+    { value: "backlog", label: "Backlog", cls: "bg-[#eef2ff] text-[var(--chip-blue)]" },
+    { value: "in_progress", label: "In Progress", cls: "bg-[#fff3eb] text-[var(--chip-orange)]" },
+    { value: "on_hold", label: "On Hold", cls: "bg-[#f3eeff] text-[var(--chip-violet)]" },
+    { value: "review", label: "Review", cls: "bg-[#fff3eb] text-[var(--chip-orange)]" },
+    { value: "done", label: "Done", cls: "bg-[#eaf5ef] text-[var(--chip-green)]" },
+  ];
+
+  const priorityOptions: Array<{ value: string; label: string; cls: string }> = [
+    { value: "low", label: "Low priority", cls: "bg-[#f0faf4] text-[var(--tertiary)]" },
+    { value: "medium", label: "Medium priority", cls: "bg-[#fff8ec] text-[var(--secondary-deep)]" },
+    { value: "high", label: "High priority", cls: "bg-[#fff1f1] text-[#ba1a1a]" },
+  ];
+
+  async function handleStatusChange(status: ProjectStatus) {
+    setEditStatus(status);
+    await onMove(project.id, status);
+  }
+
+  async function handlePriorityChange(priority: "low" | "medium" | "high") {
+    setEditPriority(priority);
+    await onPatch({ priority });
+  }
+
+  async function saveNewTask() {
+    if (!newTaskLabel.trim()) return;
+    await onPatch({ tasks: [...project.tasks, { label: newTaskLabel.trim(), done: false }] });
+    setNewTaskLabel("");
+    setAddingTask(false);
+  }
+
+  async function saveEditing() {
+    if (editing === "title") {
+      await onPatch({ title: editTitle, repository: editRepo });
+    } else if (editing === "summary") {
+      await onPatch({ summary: editSummary });
+    } else if (editing === "tags") {
+      const tags = editTags.split(",").map((t) => t.trim()).filter(Boolean);
+      await onPatch({ tags });
+    }
+    setEditing(null);
+  }
+
+  const editBtn = (field: "title" | "summary" | "tags") => (
+    <button
+      className="flex-shrink-0 flex items-center gap-1.5 rounded-full bg-[var(--surface-container)] px-3 py-1.5 text-[0.72rem] font-medium text-[var(--muted)] transition hover:bg-[var(--surface-variant)] hover:text-[var(--foreground)] active:scale-[0.96]"
+      onClick={() => setEditing(field)}
+      type="button"
+    >
+      <IconEdit />
+      Editar
+    </button>
+  );
+
+  const saveRow = (
+    <div className="flex gap-2 pt-1">
+      <button
+        className="nav-font rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
+        onClick={saveEditing}
+        type="button"
+      >
+        Guardar
+      </button>
+      <button
+        className="nav-font rounded-full bg-[var(--surface-container)] px-4 py-1.5 text-xs font-medium text-[var(--muted)] transition hover:bg-[var(--surface-variant)]"
+        onClick={() => setEditing(null)}
+        type="button"
+      >
+        Cancelar
+      </button>
+    </div>
+  );
+
+  const inputCls = "w-full rounded-[0.75rem] border-none bg-[var(--surface-card)] px-4 py-2.5 text-sm focus:ring-2 focus:ring-[var(--primary)]/30 focus:outline-none";
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-[rgba(24,28,30,0.30)] backdrop-blur-[4px] ${closing ? "animate-modal-backdrop-out" : "animate-modal-backdrop-in"}`}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+    >
+      <div
+        className={`relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-[2rem] bg-[rgba(247,250,252,0.97)] backdrop-blur-[32px] shadow-[0_32px_80px_rgba(24,28,30,0.18),0_8px_32px_rgba(24,28,30,0.08)] overflow-hidden ${closing ? "animate-modal-dialog-out" : "animate-modal-dialog-in"}`}
+        onAnimationEnd={() => { if (closing) onClose(); }}
+      >
+        {/* Status accent bar — reacts to editStatus */}
+        <div className={`h-1.5 w-full flex-shrink-0 transition-colors duration-300 ${barStyles[editStatus]}`} />
+
+        {/* Header: dropdowns + close */}
+        <div className="px-7 pt-5 pb-4 flex items-center gap-3 flex-shrink-0 flex-wrap">
+          <Dropdown
+            options={statusOptions}
+            value={editStatus}
+            onChange={(v) => handleStatusChange(v as ProjectStatus)}
+          />
+          <Dropdown
+            options={priorityOptions}
+            value={editPriority}
+            onChange={(v) => handlePriorityChange(v as "low" | "medium" | "high")}
+          />
+          <button
+            aria-label="Cerrar"
+            className="ml-auto flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[var(--surface-container)] text-[var(--muted)] transition hover:bg-[var(--surface-variant)] hover:text-[var(--foreground)] active:scale-[0.93]"
+            onClick={handleClose}
+            type="button"
+          >
+            <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto no-scrollbar px-7 pb-7 space-y-5">
+
+          {/* Title + Repo — inline edit */}
+          {editing === "title" ? (
+            <div className="rounded-[1.5rem] bg-[var(--surface-low)] p-4 space-y-2">
+              <p className="section-title mb-2">Título y repositorio</p>
+              <input
+                autoFocus
+                className={`${inputCls} text-[1.1rem] font-bold`}
+                onChange={(e) => setEditTitle(e.target.value)}
+                value={editTitle}
+              />
+              <input
+                className={inputCls}
+                onChange={(e) => setEditRepo(e.target.value)}
+                placeholder="owner/repo"
+                value={editRepo}
+              />
+              {saveRow}
+            </div>
+          ) : (
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h2 className="headline-font text-[1.65rem] font-extrabold leading-[1.15] text-[var(--foreground)]">
+                  {project.title}
+                </h2>
+                <p className="nav-font mt-1.5 text-sm text-[var(--muted-soft)]">{project.repository}</p>
+              </div>
+              {editBtn("title")}
+            </div>
+          )}
+
+          {/* Tags — inline edit */}
+          {editing === "tags" ? (
+            <div className="rounded-[1.5rem] bg-[var(--surface-low)] p-4 space-y-2">
+              <p className="section-title mb-2">Tags · separados por coma</p>
+              <input
+                autoFocus
+                className={inputCls}
+                onChange={(e) => setEditTags(e.target.value)}
+                placeholder="frontend, api, bug"
+                value={editTags}
+              />
+              {saveRow}
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              {project.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="nav-font rounded-full bg-[#eef2ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--primary)]"
+                >
+                  {tag}
+                </span>
+              ))}
+              {editBtn("tags")}
+            </div>
+          )}
+
+          {/* Summary — inline edit */}
+          {editing === "summary" ? (
+            <div className="rounded-[1.5rem] bg-[var(--surface-low)] p-4 space-y-2">
+              <p className="section-title mb-2">Descripción</p>
+              <textarea
+                autoFocus
+                className={`${inputCls} min-h-24 resize-none leading-[1.7]`}
+                onChange={(e) => setEditSummary(e.target.value)}
+                value={editSummary}
+              />
+              {saveRow}
+            </div>
+          ) : (
+            <div className="flex items-start justify-between gap-4">
+              <p className="nav-font text-[0.95rem] leading-[1.72] text-[var(--muted)]">{project.summary}</p>
+              {editBtn("summary")}
+            </div>
+          )}
+
+          {/* Details + Tasks 2-col */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-[1.5rem] bg-[var(--surface-low)] p-5">
+              <p className="section-title mb-3">Details</p>
+              <ul className="nav-font space-y-2 text-sm text-[var(--foreground)]">
+                {project.details.length ? (
+                  project.details.map((detail) => (
+                    <li key={detail} className="flex gap-2">
+                      <span className="text-[var(--muted-soft)] flex-shrink-0">·</span>
+                      {detail}
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-[var(--muted-soft)]">Sin detalles adicionales.</li>
+                )}
+              </ul>
+            </div>
+            <div className="rounded-[1.5rem] bg-[var(--surface-low)] p-5">
+              <p className="section-title mb-3">Tasks</p>
+              <ul className="nav-font space-y-1 text-sm text-[var(--foreground)]">
+                {project.tasks.length ? (
+                  project.tasks.map((task, i) => (
+                    <li key={i}>
+                      <button
+                        className="flex w-full items-start gap-2.5 rounded-[0.75rem] px-1 py-1.5 text-left transition hover:bg-[var(--surface-container)]"
+                        onClick={() => onPatch({ action: "toggle_task", taskIndex: i })}
+                        type="button"
+                      >
+                        <span className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border transition ${
+                          task.done
+                            ? "border-[var(--tertiary)] bg-[var(--tertiary)] text-white"
+                            : "border-[var(--muted-soft)] text-transparent"
+                        }`}>
+                          {task.done && (
+                            <svg aria-hidden="true" className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24">
+                              <path d="M5 13l4 4L19 7" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
+                            </svg>
+                          )}
+                        </span>
+                        <span className={`leading-[1.5] ${task.done ? "line-through opacity-40" : ""}`}>{task.label}</span>
+                      </button>
+                    </li>
+                  ))
+                ) : (
+                  <li className="py-1 text-[var(--muted-soft)]">Sin checklist todavía.</li>
+                )}
+              </ul>
+              {addingTask ? (
+                <div className="mt-3 flex gap-2">
+                  <input
+                    autoFocus
+                    className="flex-1 rounded-[0.75rem] border-none bg-[var(--surface-card)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+                    onChange={(e) => setNewTaskLabel(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveNewTask();
+                      if (e.key === "Escape") { setAddingTask(false); setNewTaskLabel(""); }
+                    }}
+                    placeholder="Nueva tarea…"
+                    value={newTaskLabel}
+                  />
+                  <button
+                    className="nav-font rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
+                    onClick={saveNewTask}
+                    type="button"
+                  >
+                    Agregar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="nav-font mt-3 flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium text-[var(--muted-soft)] transition hover:text-[var(--primary)]"
+                  onClick={() => setAddingTask(true)}
+                  type="button"
+                >
+                  <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                    <path d="M12 5v14M5 12h14" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+                  </svg>
+                  Agregar tarea
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -338,7 +799,7 @@ function BoardColumn({
 
       <div className="space-y-5">
         {projects.length ? (
-          projects.map((project) => {
+          projects.map((project, index) => {
             const done = project.status === "done";
             const urgent = !done && project.priority === "high";
             const onHold = project.status === "on_hold";
@@ -346,11 +807,12 @@ function BoardColumn({
             return (
               <button
                 key={project.id}
-                className={`kanban-card relative block w-full overflow-hidden text-left transition-transform duration-200 hover:-translate-y-1 ${
+                className={`kanban-card kanban-card-animated relative block w-full overflow-hidden text-left transition-transform duration-200 hover:-translate-y-1 ${
                   compactCards ? "p-4 sm:p-5" : "p-5 sm:p-6"
                 } ${
                   done ? "opacity-85 grayscale-[0.2]" : ""
                 }`}
+                style={{ "--card-delay": `${index * 55}ms` } as React.CSSProperties}
                 draggable
                 onDragEnd={() => onDragProject(null)}
                 onDragStart={() => onDragProject(project.id)}
@@ -439,6 +901,19 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
     showHints: true,
     highlightUrgent: true,
   });
+
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isUserMenuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isUserMenuOpen]);
 
   const deferredQuery = useDeferredValue(query.trim());
 
@@ -593,24 +1068,9 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
     setDraggedProjectId(null);
   }
 
-  async function handleSaveCard(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handlePatchCard(fields: Record<string, unknown>) {
     if (!selectedCard) return;
-
-    const formData = new FormData(event.currentTarget);
-    const tags = String(formData.get("tags") ?? "")
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-
-    await patchProject(selectedCard.id, {
-      title: String(formData.get("title") ?? ""),
-      repository: String(formData.get("repository") ?? ""),
-      summary: String(formData.get("summary") ?? ""),
-      status: String(formData.get("status") ?? selectedCard.status),
-      priority: String(formData.get("priority") ?? selectedCard.priority),
-      tags,
-    });
+    await patchProject(selectedCard.id, fields);
   }
 
   async function handleCreateCard(event: React.FormEvent<HTMLFormElement>) {
@@ -685,7 +1145,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
 
   return (
     <div className="kanban-shell flex min-h-screen flex-col">
-      <header className="sticky top-0 z-40 border-b border-[var(--shell-line)] bg-[var(--surface)]/95 backdrop-blur">
+      <header className="sticky top-0 z-40 bg-[var(--surface)]/95 backdrop-blur shadow-[0_4px_28px_rgba(24,28,30,0.05)]">
         <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-7">
           <div className="flex items-center gap-4 sm:gap-6">
             <span className="headline-font text-[1.35rem] font-extrabold text-[var(--foreground)] sm:text-[1.6rem]">
@@ -695,10 +1155,10 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
               {(["projects", "tasks", "calendar"] as AppTab[]).map((tab) => (
                 <button
                   key={tab}
-                  className={`nav-font text-[1rem] ${
+                  className={`nav-font text-[0.96rem] rounded-full px-3.5 py-1.5 transition active:scale-[0.96] ${
                     activeTab === tab
-                      ? "font-semibold text-[var(--primary-strong)]"
-                      : "font-medium text-[var(--muted)]"
+                      ? "bg-[#eef2ff] font-semibold text-[var(--primary)] hover:bg-[#e4eaff]"
+                      : "font-medium text-[var(--muted)] hover:bg-[var(--surface-container)] hover:text-[var(--foreground)]"
                   }`}
                   onClick={() => setActiveTab(tab)}
                   type="button"
@@ -732,7 +1192,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
                 value={query}
               />
             </label>
-            <div className="relative">
+            <div className="relative" ref={userMenuRef}>
               <button
                 aria-expanded={isAuthenticated ? isUserMenuOpen : overlay === "login"}
                 className="flex items-center gap-3 rounded-full bg-white px-2 py-1.5 shadow-[0_8px_20px_rgba(24,28,30,0.06)]"
@@ -839,7 +1299,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
         </div>
 
         {activeTab === "projects" ? (
-          <section className="no-scrollbar -mx-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8">
+          <section key="projects" className="animate-tab-fade-in no-scrollbar -mx-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8">
             <div className="flex min-w-max gap-5 sm:gap-6">
               {visibleColumns.map((column) => (
                 <BoardColumn
@@ -860,28 +1320,36 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
         ) : null}
 
         {activeTab === "tasks" ? (
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <section key="tasks" className="animate-tab-fade-in grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {tasksView.length ? (
               tasksView.map((task) => (
                 <button
                   key={task.id}
-                  className="rounded-[1.5rem] bg-white p-5 text-left shadow-[0_8px_20px_rgba(24,28,30,0.05)]"
+                  className="kanban-card relative overflow-hidden p-5 text-left transition-transform duration-200 hover:-translate-y-0.5"
                   onClick={() => handleToggleTask(task.projectId, task.taskIndex)}
                   type="button"
                 >
-                  <p className="nav-font text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
-                    {task.projectTitle}
-                  </p>
-                  <h3 className="headline-font mt-3 text-lg font-bold text-[var(--foreground)]">
-                    {task.label}
-                  </h3>
-                  <p className="nav-font mt-3 text-sm text-[var(--muted-soft)]">
-                    {task.done ? "Completada" : "Pendiente"} · {task.status.replaceAll("_", " ")}
-                  </p>
+                  <div className={`absolute bottom-0 left-0 top-0 w-1.5 ${barStyles[task.status]}`} />
+                  <div className="pl-2">
+                    <p className="nav-font text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                      {task.projectTitle}
+                    </p>
+                    <h3 className={`headline-font mt-3 text-lg font-bold text-[var(--foreground)] ${task.done ? "line-through opacity-50" : ""}`}>
+                      {task.label}
+                    </h3>
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className={`nav-font rounded-full px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-[0.14em] ${tagStyles[task.status]}`}>
+                        {task.status.replaceAll("_", " ")}
+                      </span>
+                      <span className="nav-font text-xs text-[var(--muted-soft)]">
+                        {task.done ? "✓ Completada" : "○ Pendiente"}
+                      </span>
+                    </div>
+                  </div>
                 </button>
               ))
             ) : (
-              <div className="nav-font rounded-[1.5rem] bg-white p-6 text-[var(--muted)] shadow-[0_8px_20px_rgba(24,28,30,0.05)]">
+              <div className="nav-font rounded-[1.5rem] bg-[var(--surface-card)] p-6 text-[var(--muted)] shadow-[0_8px_20px_rgba(24,28,30,0.04)]">
                 No hay tareas para la busqueda actual.
               </div>
             )}
@@ -889,28 +1357,36 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
         ) : null}
 
         {activeTab === "calendar" ? (
-          <section className="grid gap-4 lg:grid-cols-2">
+          <section key="calendar" className="animate-tab-fade-in grid gap-4 lg:grid-cols-2">
             {calendarView.length ? (
               calendarView.map((project) => (
                 <button
                   key={project.id}
-                  className="rounded-[1.75rem] bg-white p-6 text-left shadow-[0_8px_20px_rgba(24,28,30,0.05)]"
+                  className="kanban-card relative overflow-hidden p-6 text-left transition-transform duration-200 hover:-translate-y-0.5"
                   onClick={() => openCard(project)}
                   type="button"
                 >
-                  <p className="nav-font text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
-                    {formatDate(project.lastUpdate)}
-                  </p>
-                  <h3 className="headline-font mt-3 text-xl font-bold text-[var(--foreground)]">
-                    {project.title}
-                  </h3>
-                  <p className="nav-font mt-3 text-sm leading-6 text-[var(--muted-soft)]">
-                    {project.summary}
-                  </p>
+                  <div className={`absolute bottom-0 left-0 top-0 w-1.5 ${barStyles[project.status]}`} />
+                  <div className="pl-2">
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="nav-font text-xs uppercase tracking-[0.16em] text-[var(--muted-soft)]">
+                        {formatDate(project.lastUpdate)}
+                      </p>
+                      <span className={`nav-font rounded-full px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-[0.14em] ${tagStyles[project.status]}`}>
+                        {project.status.replaceAll("_", " ")}
+                      </span>
+                    </div>
+                    <h3 className="headline-font mt-3 text-xl font-bold text-[var(--foreground)]">
+                      {project.title}
+                    </h3>
+                    <p className="nav-font mt-3 text-sm leading-6 text-[var(--muted-soft)]">
+                      {project.summary}
+                    </p>
+                  </div>
                 </button>
               ))
             ) : (
-              <div className="nav-font rounded-[1.5rem] bg-white p-6 text-[var(--muted)] shadow-[0_8px_20px_rgba(24,28,30,0.05)]">
+              <div className="nav-font rounded-[1.5rem] bg-[var(--surface-card)] p-6 text-[var(--muted)] shadow-[0_8px_20px_rgba(24,28,30,0.04)]">
                 No hay proyectos para el calendario actual.
               </div>
             )}
@@ -920,7 +1396,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
 
       <button
         aria-label="Agregar tarjeta"
-        className="fixed bottom-6 right-6 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--primary)] text-white shadow-[0_24px_50px_rgba(0,64,223,0.3)] transition hover:scale-105 sm:bottom-8 sm:right-8 sm:h-20 sm:w-20"
+        className="fixed bottom-6 right-6 flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] text-white shadow-[0_24px_50px_rgba(0,64,223,0.35)] transition hover:scale-105 hover:shadow-[0_28px_56px_rgba(0,64,223,0.45)] active:scale-[0.97] sm:bottom-8 sm:right-8 sm:h-20 sm:w-20"
         onClick={() => setOverlay("add")}
         type="button"
       >
@@ -948,7 +1424,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
       ) : null}
 
       {overlay === "settings" ? (
-        <Overlay
+        <CenteredPanel
           onClose={() => setOverlay(null)}
           subtitle="Preferencias visuales de esta sesion."
           title="Settings"
@@ -961,7 +1437,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
             ].map(([key, label]) => (
               <button
                 key={key}
-                className="flex w-full items-center justify-between rounded-[1.25rem] bg-[#f7f9fb] px-4 py-4 text-left"
+                className="flex w-full items-center justify-between rounded-[1.25rem] bg-[#f7f9fb] px-4 py-4 text-left transition hover:bg-[var(--surface-container)] active:scale-[0.99]"
                 onClick={() =>
                   setSettings((current) => ({
                     ...current,
@@ -983,11 +1459,11 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
               </button>
             ))}
           </div>
-        </Overlay>
+        </CenteredPanel>
       ) : null}
 
       {overlay === "profile" && !selectedCard ? (
-        <Overlay
+        <CenteredPanel
           onClose={() => setOverlay(null)}
           subtitle="Sesion activa en este tablero."
           title="Profile"
@@ -1005,7 +1481,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
               Sesion simulada como usuaria logueada. Desde aca podemos luego conectar autenticacion real.
             </p>
           </div>
-        </Overlay>
+        </CenteredPanel>
       ) : null}
 
       {overlay === "login" ? (
@@ -1035,7 +1511,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
             </label>
             {loginError ? <p className="nav-font text-sm text-[#ba1a1a]">{loginError}</p> : null}
             <button
-              className="nav-font w-full rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] px-4 py-3 text-sm font-semibold text-white"
+              className="nav-font w-full rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 active:scale-[0.98]"
               type="submit"
             >
               Entrar
@@ -1045,219 +1521,100 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
       ) : null}
 
       {overlay === "card" && selectedCard ? (
-        <Overlay
+        <CardModal
+          project={selectedCard}
           onClose={() => setOverlay(null)}
-          subtitle={selectedCard.repository}
-          title={selectedCard.title}
-        >
-          <div className="space-y-5">
-            <div className="flex flex-wrap gap-2">
-              {visibleColumns.map((column) => (
-                <button
-                  key={column.id}
-                  className={`nav-font rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
-                    selectedCard.status === column.id
-                      ? "bg-[#eef2ff] text-[var(--primary)]"
-                      : "bg-[#eceff3] text-[var(--muted)]"
-                  }`}
-                  onClick={() => handleMoveProject(selectedCard.id, column.id)}
-                  type="button"
-                >
-                  {column.label}
-                </button>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {selectedCard.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="nav-font rounded-full bg-[#eef2ff] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--primary)]"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-            <p className="nav-font text-sm leading-6 text-[var(--muted)]">{selectedCard.summary}</p>
-            <div className="rounded-[1.25rem] bg-[#f7f9fb] p-4">
-              <p className="nav-font text-xs uppercase tracking-[0.16em] text-[var(--muted-soft)]">
-                Details
-              </p>
-              <ul className="nav-font mt-3 space-y-2 text-sm text-[var(--foreground)]">
-                {selectedCard.details.length ? (
-                  selectedCard.details.map((detail) => <li key={detail}>• {detail}</li>)
-                ) : (
-                  <li>Sin detalles adicionales por ahora.</li>
-                )}
-              </ul>
-            </div>
-            <div className="rounded-[1.25rem] bg-[#f7f9fb] p-4">
-              <p className="nav-font text-xs uppercase tracking-[0.16em] text-[var(--muted-soft)]">
-                Tasks
-              </p>
-              <ul className="nav-font mt-3 space-y-2 text-sm text-[var(--foreground)]">
-                {selectedCard.tasks.length ? (
-                  selectedCard.tasks.map((task) => (
-                    <li key={task.label}>{task.done ? "✓" : "○"} {task.label}</li>
-                  ))
-                ) : (
-                  <li>Sin checklist todavia.</li>
-                )}
-              </ul>
-            </div>
-            <form className="space-y-3 rounded-[1.25rem] bg-[#f7f9fb] p-4" onSubmit={handleSaveCard}>
-              <p className="nav-font text-xs uppercase tracking-[0.16em] text-[var(--muted-soft)]">
-                Edit card
-              </p>
-              <input
-                className="w-full rounded-[1rem] border-none bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
-                defaultValue={selectedCard.title}
-                name="title"
-                type="text"
-              />
-              <input
-                className="w-full rounded-[1rem] border-none bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
-                defaultValue={selectedCard.repository}
-                name="repository"
-                type="text"
-              />
-              <textarea
-                className="min-h-24 w-full rounded-[1rem] border-none bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
-                defaultValue={selectedCard.summary}
-                name="summary"
-              />
-              <input
-                className="w-full rounded-[1rem] border-none bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
-                defaultValue={selectedCard.tags.join(", ")}
-                name="tags"
-                type="text"
-              />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <select
-                  className="rounded-[1rem] border-none bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
-                  defaultValue={selectedCard.status}
-                  name="status"
-                >
-                  <option value="backlog">Backlog</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="on_hold">On Hold</option>
-                  <option value="review">Review</option>
-                  <option value="done">Done</option>
-                </select>
-                <select
-                  className="rounded-[1rem] border-none bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
-                  defaultValue={selectedCard.priority}
-                  name="priority"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
-              <button
-                className="nav-font w-full rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] px-4 py-3 text-sm font-semibold text-white"
-                type="submit"
-              >
-                Guardar cambios
-              </button>
-            </form>
-          </div>
-        </Overlay>
+          onMove={handleMoveProject}
+          onPatch={handlePatchCard}
+        />
       ) : null}
 
       {overlay === "add" ? (
-        <Overlay
+        <CenteredPanel
           onClose={() => setOverlay(null)}
           subtitle="Crea una tarjeta nueva y guardala en el tablero."
           title="New Card"
         >
           <form className="space-y-4" onSubmit={handleCreateCard}>
-            <label className="nav-font block text-sm text-[var(--foreground)]">
-              Titulo
+            <div className="space-y-1.5">
+              <label className="nav-font block text-xs font-semibold text-[var(--muted)]">Título</label>
               <input
-                className="mt-2 w-full rounded-[1rem] border-none bg-[#f4f6f9] px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
+                className="w-full rounded-[1rem] border-none bg-[var(--surface-container)] px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30 focus:outline-none"
                 onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
                 required
                 type="text"
                 value={form.title}
               />
-            </label>
-            <label className="nav-font block text-sm text-[var(--foreground)]">
-              Repository
+            </div>
+            <div className="space-y-1.5">
+              <label className="nav-font block text-xs font-semibold text-[var(--muted)]">Repositorio</label>
               <input
-                className="mt-2 w-full rounded-[1rem] border-none bg-[#f4f6f9] px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
+                className="w-full rounded-[1rem] border-none bg-[var(--surface-container)] px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30 focus:outline-none"
                 onChange={(event) => setForm((current) => ({ ...current, repository: event.target.value }))}
                 required
                 type="text"
                 value={form.repository}
               />
-            </label>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="nav-font block text-sm text-[var(--foreground)]">
-                Status
-                <select
-                  className="mt-2 w-full rounded-[1rem] border-none bg-[#f4f6f9] px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      status: event.target.value as ProjectStatus,
-                    }))
-                  }
-                  value={form.status}
-                >
-                  <option value="backlog">Backlog</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="on_hold">On Hold</option>
-                  <option value="review">Review</option>
-                  <option value="done">Done</option>
-                </select>
-              </label>
-              <label className="nav-font block text-sm text-[var(--foreground)]">
-                Priority
-                <select
-                  className="mt-2 w-full rounded-[1rem] border-none bg-[#f4f6f9] px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      priority: event.target.value as "low" | "medium" | "high",
-                    }))
-                  }
-                  value={form.priority}
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </label>
             </div>
-            <label className="nav-font block text-sm text-[var(--foreground)]">
-              Tags
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="nav-font block text-xs font-semibold text-[var(--muted)]">Estado</label>
+                <Dropdown
+                  options={[
+                    { value: "backlog", label: "Backlog", cls: "bg-[#eef2ff] text-[var(--chip-blue)]" },
+                    { value: "in_progress", label: "In Progress", cls: "bg-[#fff3eb] text-[var(--chip-orange)]" },
+                    { value: "on_hold", label: "On Hold", cls: "bg-[#f3eeff] text-[var(--chip-violet)]" },
+                    { value: "review", label: "Review", cls: "bg-[#fff3eb] text-[var(--chip-orange)]" },
+                    { value: "done", label: "Done", cls: "bg-[#eaf5ef] text-[var(--chip-green)]" },
+                  ]}
+                  value={form.status}
+                  onChange={(v) => setForm((current) => ({ ...current, status: v as ProjectStatus }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="nav-font block text-xs font-semibold text-[var(--muted)]">Prioridad</label>
+                <Dropdown
+                  options={[
+                    { value: "low", label: "Low priority", cls: "bg-[#f0faf4] text-[var(--tertiary)]" },
+                    { value: "medium", label: "Medium priority", cls: "bg-[#fff8ec] text-[var(--secondary-deep)]" },
+                    { value: "high", label: "High priority", cls: "bg-[#fff1f1] text-[#ba1a1a]" },
+                  ]}
+                  value={form.priority}
+                  onChange={(v) => setForm((current) => ({ ...current, priority: v as "low" | "medium" | "high" }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="nav-font block text-xs font-semibold text-[var(--muted)]">
+                Tags <span className="font-normal opacity-50">· separados por coma</span>
+              </label>
               <input
-                className="mt-2 w-full rounded-[1rem] border-none bg-[#f4f6f9] px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
+                className="w-full rounded-[1rem] border-none bg-[var(--surface-container)] px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30 focus:outline-none"
                 onChange={(event) => setForm((current) => ({ ...current, tags: event.target.value }))}
                 placeholder="frontend, kanban, github"
                 type="text"
                 value={form.tags}
               />
-            </label>
-            <label className="nav-font block text-sm text-[var(--foreground)]">
-              Summary
+            </div>
+            <div className="space-y-1.5">
+              <label className="nav-font block text-xs font-semibold text-[var(--muted)]">Resumen</label>
               <textarea
-                className="mt-2 min-h-28 w-full rounded-[1rem] border-none bg-[#f4f6f9] px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
+                className="min-h-24 w-full rounded-[1rem] border-none bg-[var(--surface-container)] px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30 focus:outline-none resize-none"
                 onChange={(event) => setForm((current) => ({ ...current, summary: event.target.value }))}
                 required
                 value={form.summary}
               />
-            </label>
+            </div>
             {createError ? <p className="nav-font text-sm text-[#ba1a1a]">{createError}</p> : null}
             <button
-              className="nav-font w-full rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] px-4 py-3 text-sm font-semibold text-white"
+              className="nav-font w-full rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 active:scale-[0.98]"
               disabled={isSaving}
               type="submit"
             >
               {isSaving ? "Guardando..." : "Crear tarjeta"}
             </button>
           </form>
-        </Overlay>
+        </CenteredPanel>
       ) : null}
     </div>
   );
