@@ -15,6 +15,7 @@ import type {
   BoardData,
   KanbanProject,
   ProjectStatus,
+  SessionUser,
 } from "@/lib/types";
 
 const visibleColumns: {
@@ -40,6 +41,12 @@ const visibleColumns: {
     label: "On Hold",
     tone: "bg-[var(--hold)] shadow-[0_0_12px_rgba(116,81,184,0.22)]",
     surface: "bg-[#ece9f3]",
+  },
+  {
+    id: "review",
+    label: "Review",
+    tone: "bg-[#d97706] shadow-[0_0_12px_rgba(217,119,6,0.22)]",
+    surface: "bg-[#f6eee3]",
   },
   {
     id: "done",
@@ -72,7 +79,6 @@ type OverlayState =
   | "profile"
   | "card"
   | "add"
-  | "login"
   | null;
 
 type CreateCardForm = {
@@ -95,16 +101,19 @@ const initialForm: CreateCardForm = {
   tags: "",
 };
 
-const HARDCODED_EMAIL = "marianoparisi59gmail.com";
-const HARDCODED_PASSWORD = "kanboard123";
+const DEFAULT_LOGIN_EMAIL = "marianoparisi59gmail.com";
+const emptyBoard: BoardData = {
+  workspace: {
+    name: "Kansito",
+    description: "",
+    agentChannel: "POST /api/agent-updates",
+    lastSyncedAt: new Date(0).toISOString(),
+  },
+  projects: [],
+  activity: [],
+};
 
 function columnProjects(projects: KanbanProject[], column: ProjectStatus) {
-  if (column === "in_progress") {
-    return projects.filter(
-      (project) => project.status === "in_progress" || project.status === "review",
-    );
-  }
-
   return projects.filter((project) => project.status === column);
 }
 
@@ -357,6 +366,120 @@ function CenteredPanel({
         <div className="px-7 pb-7">{children}</div>
       </div>
     </div>
+  );
+}
+
+function LoginGate({
+  loginEmail,
+  loginPassword,
+  loginError,
+  authLoading,
+  onEmailChange,
+  onPasswordChange,
+  onSubmit,
+}: {
+  loginEmail: string;
+  loginPassword: string;
+  loginError: string;
+  authLoading: boolean;
+  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top_left,#eef2ff_0%,#f7fafc_38%,#eef2f4_100%)] px-4 py-10 sm:px-6">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-20 top-16 h-56 w-56 rounded-full bg-[rgba(45,91,255,0.10)] blur-3xl" />
+        <div className="absolute -right-12 bottom-12 h-72 w-72 rounded-full bg-[rgba(254,107,0,0.08)] blur-3xl" />
+      </div>
+
+      <div className="relative grid w-full max-w-6xl gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+        <section className="hidden lg:block">
+          <div className="max-w-xl">
+            <p className="section-title mb-4">Kansito workspace</p>
+            <h1 className="headline-font text-5xl font-extrabold leading-[0.95] text-[var(--foreground)]">
+              Entrá primero.
+              <br />
+              El tablero viene después.
+            </h1>
+            <p className="nav-font mt-6 max-w-lg text-base leading-7 text-[var(--muted)]">
+              Acceso simple y directo para entrar a tu espacio de proyectos. Una vez adentro, ves
+              el kanban, movés tarjetas y seguís el estado real del trabajo.
+            </p>
+
+            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+              {[
+                ["Projects", "Vista principal para seguir cards y estados."],
+                ["Tasks", "Tareas accionables por proyecto con marcado rapido."],
+                ["Calendario", "Línea temporal de actividad y cambios recientes."],
+              ].map(([title, copy]) => (
+                <div
+                  key={title}
+                  className="rounded-[1.75rem] bg-white/70 p-5 shadow-[0_12px_36px_rgba(24,28,30,0.05)] backdrop-blur-[10px]"
+                >
+                  <p className="headline-font text-lg font-bold text-[var(--foreground)]">{title}</p>
+                  <p className="nav-font mt-2 text-sm leading-6 text-[var(--muted-soft)]">{copy}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[2rem] bg-[rgba(247,250,252,0.92)] p-6 shadow-[0_32px_80px_rgba(24,28,30,0.14),0_8px_32px_rgba(24,28,30,0.06)] backdrop-blur-[28px] sm:p-8">
+          <div className="mb-8 flex items-center gap-4">
+            <div className="headline-font flex h-14 w-14 items-center justify-center rounded-[1.35rem] bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] text-lg font-bold text-white shadow-[0_18px_32px_rgba(0,64,223,0.25)]">
+              KS
+            </div>
+            <div>
+              <p className="headline-font text-2xl font-extrabold text-[var(--foreground)]">Kansito</p>
+              <p className="nav-font mt-1 text-sm text-[var(--muted-soft)]">Acceso seguro para entrar al tablero</p>
+            </div>
+          </div>
+
+          <form className="space-y-4" onSubmit={onSubmit}>
+            <label className="nav-font block text-sm font-medium text-[var(--foreground)]">
+              Email
+              <input
+                className="mt-2 w-full rounded-[1rem] border-none bg-white px-4 py-3 text-sm text-[var(--foreground)] shadow-[inset_0_0_0_1px_rgba(224,227,229,0.55)] focus:ring-2 focus:ring-[var(--primary)]/30 focus:outline-none"
+                onChange={(event) => onEmailChange(event.target.value)}
+                type="text"
+                value={loginEmail}
+              />
+            </label>
+
+            <label className="nav-font block text-sm font-medium text-[var(--foreground)]">
+              Password
+              <input
+                className="mt-2 w-full rounded-[1rem] border-none bg-white px-4 py-3 text-sm text-[var(--foreground)] shadow-[inset_0_0_0_1px_rgba(224,227,229,0.55)] focus:ring-2 focus:ring-[var(--primary)]/30 focus:outline-none"
+                onChange={(event) => onPasswordChange(event.target.value)}
+                type="password"
+                value={loginPassword}
+              />
+            </label>
+
+            {loginError ? <p className="nav-font text-sm text-[#ba1a1a]">{loginError}</p> : null}
+
+            <button
+              disabled={authLoading}
+              className="nav-font mt-2 w-full rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] px-4 py-3.5 text-sm font-semibold text-white transition hover:opacity-90 active:scale-[0.98]"
+              type="submit"
+            >
+              {authLoading ? "Entrando..." : "Entrar a Kansito"}
+            </button>
+          </form>
+
+          <div className="mt-6 rounded-[1.5rem] bg-white/70 p-4">
+            <p className="nav-font text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+              Acceso principal
+            </p>
+            <p className="nav-font mt-2 text-sm leading-6 text-[var(--muted-soft)]">
+              El acceso valida usuario y password contra la base MySQL configurada para el
+              proyecto.
+            </p>
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }
 
@@ -782,7 +905,7 @@ function BoardColumn({
 }) {
   return (
     <div
-      className={`kanban-column ${column.surface} flex min-h-[68vh] flex-col gap-5 p-5 transition sm:min-h-[71vh] sm:gap-6 sm:p-6 ${
+      className={`kanban-column ${column.surface} flex min-h-[66vh] flex-col gap-4 p-4 transition sm:min-h-[69vh] sm:gap-5 sm:p-5 ${
         isDropTarget ? "ring-2 ring-[var(--primary)]/30" : ""
       }`}
       onDragOver={(event) => event.preventDefault()}
@@ -808,7 +931,7 @@ function BoardColumn({
               <button
                 key={project.id}
                 className={`kanban-card kanban-card-animated relative block w-full overflow-hidden text-left transition-transform duration-200 hover:-translate-y-1 ${
-                  compactCards ? "p-4 sm:p-5" : "p-5 sm:p-6"
+                  compactCards ? "p-3.5 sm:p-4" : "p-4 sm:p-5"
                 } ${
                   done ? "opacity-85 grayscale-[0.2]" : ""
                 }`}
@@ -823,27 +946,27 @@ function BoardColumn({
                 <div
                   className={`flex flex-col pl-2 ${
                     compactCards
-                      ? "min-h-[138px] gap-3 sm:min-h-[150px]"
-                      : "min-h-[158px] gap-4 sm:min-h-[174px] sm:gap-5"
+                      ? "min-h-[122px] gap-2.5 sm:min-h-[132px]"
+                      : "min-h-[144px] gap-3 sm:min-h-[156px] sm:gap-4"
                   }`}
                 >
-                  <span className={`nav-font self-start rounded-full px-3 py-1 text-[0.74rem] font-extrabold uppercase tracking-[0.16em] ${tagStyles[project.status]}`}>
+                  <span className={`nav-font self-start rounded-full px-2.5 py-0.5 text-[0.68rem] font-extrabold uppercase tracking-[0.15em] ${tagStyles[project.status]}`}>
                     {cardLabel(project)}
                   </span>
                   <h3
-                    className={`headline-font max-w-[14ch] text-[1rem] font-bold leading-[1.28] text-[var(--foreground)] sm:text-[1.15rem] ${
+                    className={`headline-font max-w-[14ch] text-[0.92rem] font-bold leading-[1.22] text-[var(--foreground)] sm:text-[1.04rem] ${
                       done ? "line-through decoration-[rgba(60,121,86,0.35)]" : ""
                     }`}
                   >
                     {project.title}
                   </h3>
                   {showHints ? (
-                    <p className="nav-font text-xs leading-5 text-[var(--muted-soft)]">
+                    <p className="nav-font text-[0.72rem] leading-4 text-[var(--muted-soft)]">
                       {project.repository}
                     </p>
                   ) : null}
                   <div
-                    className={`nav-font mt-auto flex items-center justify-between text-[0.92rem] sm:text-[0.98rem] ${
+                    className={`nav-font mt-auto flex items-center justify-between text-[0.8rem] sm:text-[0.86rem] ${
                       done
                         ? "text-[var(--tertiary)]"
                         : onHold
@@ -880,16 +1003,26 @@ function BoardColumn({
   );
 }
 
-export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
-  const [board, setBoard] = useState(initialBoard);
+export function BoardApp({
+  initialBoard,
+  initialAuthEmail,
+  initialUserName,
+}: {
+  initialBoard: BoardData | null;
+  initialAuthEmail: string | null;
+  initialUserName: string | null;
+}) {
+  const [board, setBoard] = useState<BoardData | null>(initialBoard);
   const [activeTab, setActiveTab] = useState<AppTab>("projects");
   const [overlay, setOverlay] = useState<OverlayState>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authEmail, setAuthEmail] = useState("");
-  const [loginEmail, setLoginEmail] = useState(HARDCODED_EMAIL);
-  const [loginPassword, setLoginPassword] = useState(HARDCODED_PASSWORD);
+  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(initialAuthEmail));
+  const [authEmail, setAuthEmail] = useState(initialAuthEmail ?? "");
+  const [userName, setUserName] = useState(initialUserName ?? "Mariano Parisi");
+  const [loginEmail, setLoginEmail] = useState(initialAuthEmail ?? DEFAULT_LOGIN_EMAIL);
+  const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
   const [selectedCard, setSelectedCard] = useState<KanbanProject | null>(null);
   const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -903,6 +1036,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
   });
 
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const boardData = board ?? emptyBoard;
 
   useEffect(() => {
     if (!isUserMenuOpen) return;
@@ -918,8 +1052,8 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
   const deferredQuery = useDeferredValue(query.trim());
 
   const filteredProjects = useMemo(
-    () => filterProjects(board.projects, deferredQuery),
-    [board.projects, deferredQuery],
+    () => filterProjects(boardData.projects, deferredQuery),
+    [boardData.projects, deferredQuery],
   );
 
   const tasksView = useMemo(() => {
@@ -962,11 +1096,6 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
       } catch {}
     }
 
-    const savedAuth = window.localStorage.getItem("kanboard-auth-email");
-    if (savedAuth) {
-      setIsAuthenticated(true);
-      setAuthEmail(savedAuth);
-    }
   }, []);
 
   useEffect(() => {
@@ -982,27 +1111,68 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
     return `${left[0] ?? "M"}${right[0] ?? left[1] ?? "M"}`.toUpperCase();
   }
 
-  function handleLogin(event: React.FormEvent<HTMLFormElement>) {
+  async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setAuthLoading(true);
+    setLoginError("");
 
-    if (loginEmail === HARDCODED_EMAIL && loginPassword === HARDCODED_PASSWORD) {
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: loginEmail.trim().toLowerCase(),
+          password: loginPassword,
+        }),
+      });
+
+      const json = (await response.json()) as {
+        error?: string;
+        user?: SessionUser;
+      };
+
+      if (!response.ok || !json.user) {
+        throw new Error(json.error ?? "No se pudo iniciar sesión.");
+      }
+
       setIsAuthenticated(true);
-      setAuthEmail(loginEmail);
-      setLoginError("");
-      window.localStorage.setItem("kanboard-auth-email", loginEmail);
-      setOverlay(null);
-      return;
+      setAuthEmail(json.user.email);
+      setUserName(json.user.fullName);
+      window.location.reload();
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : "No se pudo iniciar sesión.");
+    } finally {
+      setAuthLoading(false);
     }
-
-    setLoginError("Credenciales invalidas.");
   }
 
-  function handleLogout() {
-    setIsAuthenticated(false);
-    setAuthEmail("");
-    setIsUserMenuOpen(false);
-    setOverlay(null);
-    window.localStorage.removeItem("kanboard-auth-email");
+  async function handleLogout() {
+    setAuthLoading(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      setIsAuthenticated(false);
+      setAuthEmail("");
+      setUserName("Mariano Parisi");
+      setBoard(null);
+      setIsUserMenuOpen(false);
+      setOverlay(null);
+      window.location.reload();
+    }
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <LoginGate
+        authLoading={authLoading}
+        loginEmail={loginEmail}
+        loginError={loginError}
+        loginPassword={loginPassword}
+        onEmailChange={setLoginEmail}
+        onPasswordChange={setLoginPassword}
+        onSubmit={handleLogin}
+      />
+    );
   }
 
   function openCard(project: KanbanProject) {
@@ -1031,12 +1201,16 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
     }
 
     startTransition(() => {
-      setBoard((current) => ({
-        ...current,
-        projects: current.projects.map((project) =>
+      setBoard((current) => {
+        const baseBoard = current ?? emptyBoard;
+
+        return {
+          ...baseBoard,
+          projects: baseBoard.projects.map((project) =>
           project.id === json.project!.id ? json.project! : project,
-        ),
-      }));
+          ),
+        };
+      });
     });
 
     if (options?.refreshSelected !== false) {
@@ -1080,7 +1254,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
 
     try {
       const payload: AgentUpdatePayload = {
-        owner: form.owner,
+        owner: form.owner || userName,
         repository: form.repository,
         title: form.title,
         status: form.status,
@@ -1091,7 +1265,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
           .map((tag) => tag.trim())
           .filter(Boolean),
         source: "cli",
-        author: "Maria",
+        author: userName,
       };
 
       const response = await fetch("/api/agent-updates", {
@@ -1111,12 +1285,13 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
 
       startTransition(() => {
         setBoard((current) => {
-          const withoutDuplicate = current.projects.filter(
+          const baseBoard = current ?? emptyBoard;
+          const withoutDuplicate = baseBoard.projects.filter(
             (project) => project.id !== json.result!.project.id,
           );
 
           return {
-            ...current,
+            ...baseBoard,
             projects: [json.result!.project, ...withoutDuplicate],
             activity: [
               {
@@ -1125,10 +1300,10 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
                 projectTitle: json.result!.project.title,
                 createdAt: new Date().toISOString(),
                 source: "cli" as const,
-                author: "Maria",
+                author: userName,
                 summary: json.result!.project.summary,
               },
-              ...current.activity,
+              ...baseBoard.activity,
             ].slice(0, 12),
           };
         });
@@ -1146,16 +1321,16 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
   return (
     <div className="kanban-shell flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 bg-[var(--surface)]/95 backdrop-blur shadow-[0_4px_28px_rgba(24,28,30,0.05)]">
-        <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-7">
-          <div className="flex items-center gap-4 sm:gap-6">
-            <span className="headline-font text-[1.35rem] font-extrabold text-[var(--foreground)] sm:text-[1.6rem]">
-              BentoBoard
+        <div className="mx-auto flex w-full max-w-[1480px] items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-7">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <span className="headline-font text-[1.2rem] font-extrabold text-[var(--foreground)] sm:text-[1.45rem]">
+              Kansito
             </span>
-            <nav className="hidden items-center gap-6 lg:flex">
+            <nav className="hidden items-center gap-4 lg:flex">
               {(["projects", "tasks", "calendar"] as AppTab[]).map((tab) => (
                 <button
                   key={tab}
-                  className={`nav-font text-[0.96rem] rounded-full px-3.5 py-1.5 transition active:scale-[0.96] ${
+                  className={`nav-font text-[0.88rem] rounded-full px-3 py-1.5 transition active:scale-[0.96] ${
                     activeTab === tab
                       ? "bg-[#eef2ff] font-semibold text-[var(--primary)] hover:bg-[#e4eaff]"
                       : "font-medium text-[var(--muted)] hover:bg-[var(--surface-container)] hover:text-[var(--foreground)]"
@@ -1164,29 +1339,29 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
                   type="button"
                 >
                   {tab === "projects"
-                    ? "Projects"
+                    ? "Proyectos"
                     : tab === "tasks"
-                      ? "Tasks"
-                      : "Calendar"}
+                      ? "Tareas"
+                      : "Calendario"}
                 </button>
               ))}
             </nav>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            <label className="hidden items-center gap-3 rounded-full bg-[#d7dce1] px-4 py-2.5 text-[var(--muted)] md:flex">
+            <label className="hidden items-center gap-3 rounded-full bg-[#d7dce1] px-4 py-2 text-[var(--muted)] md:flex">
               <span className="text-[var(--muted-soft)]">
                 <IconSearch />
               </span>
               <input
-                className="nav-font w-40 border-none bg-transparent p-0 text-[0.95rem] text-[var(--foreground)] placeholder:text-[var(--muted-soft)] focus:ring-0 xl:w-56"
+                className="nav-font w-36 border-none bg-transparent p-0 text-[0.88rem] text-[var(--foreground)] placeholder:text-[var(--muted-soft)] focus:ring-0 xl:w-52"
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={
                   activeTab === "projects"
-                    ? "Search projects..."
+                    ? "Buscar proyectos..."
                     : activeTab === "tasks"
-                      ? "Search tasks..."
-                      : "Search calendar..."
+                      ? "Buscar tareas..."
+                      : "Buscar calendario..."
                 }
                 type="text"
                 value={query}
@@ -1194,38 +1369,24 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
             </label>
             <div className="relative" ref={userMenuRef}>
               <button
-                aria-expanded={isAuthenticated ? isUserMenuOpen : overlay === "login"}
-                className="flex items-center gap-3 rounded-full bg-white px-2 py-1.5 shadow-[0_8px_20px_rgba(24,28,30,0.06)]"
-                onClick={() => {
-                  if (isAuthenticated) {
-                    setIsUserMenuOpen((current) => !current);
-                  } else {
-                    setOverlay("login");
-                  }
-                }}
+                aria-expanded={isUserMenuOpen}
+                className="flex items-center gap-2.5 rounded-full bg-white px-2 py-1.5 shadow-[0_8px_20px_rgba(24,28,30,0.06)]"
+                onClick={() => setIsUserMenuOpen((current) => !current)}
                 type="button"
               >
-                <div className="headline-font flex h-10 w-10 items-center justify-center rounded-full bg-[#eef2ff] text-sm font-bold text-[var(--primary)]">
-                  {isAuthenticated ? initialsFromEmail(authEmail) : "IN"}
+                <div className="headline-font flex h-9 w-9 items-center justify-center rounded-full bg-[#eef2ff] text-[0.8rem] font-bold text-[var(--primary)]">
+                  {initialsFromEmail(authEmail)}
                 </div>
                 <div className="hidden sm:block">
-                  {isAuthenticated ? (
-                    <span className="nav-font text-sm font-medium text-[var(--foreground)]">
-                      {authEmail}
-                    </span>
-                  ) : (
-                    <span className="nav-font text-sm font-medium text-[var(--primary)]">
-                      Login
-                    </span>
-                  )}
-                </div>
-                {isAuthenticated ? (
-                  <span className="hidden text-[var(--muted)] sm:block">
-                    <IconChevronDown />
+                  <span className="nav-font text-[0.82rem] font-medium text-[var(--foreground)]">
+                    {authEmail}
                   </span>
-                ) : null}
+                </div>
+                <span className="hidden text-[var(--muted)] sm:block">
+                  <IconChevronDown />
+                </span>
               </button>
-              {isAuthenticated && isUserMenuOpen ? (
+              {isUserMenuOpen ? (
                 <div className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-44 rounded-[1.5rem] bg-white p-2 shadow-[0_18px_40px_rgba(24,28,30,0.12)]">
                   <button
                     className="nav-font flex w-full items-center gap-3 rounded-[1rem] px-3 py-2.5 text-left text-[0.95rem] text-[var(--foreground)] transition hover:bg-[#f4f6f9]"
@@ -1238,7 +1399,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
                     <span className="text-[var(--muted)]">
                       <IconBell />
                     </span>
-                    Notifications
+                    Notificaciones
                   </button>
                   <button
                     className="nav-font flex w-full items-center gap-3 rounded-[1rem] px-3 py-2.5 text-left text-[0.95rem] text-[var(--foreground)] transition hover:bg-[#f4f6f9]"
@@ -1251,7 +1412,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
                     <span className="text-[var(--muted)]">
                       <IconGear />
                     </span>
-                    Settings
+                    Ajustes
                   </button>
                   <button
                     className="nav-font flex w-full items-center gap-3 rounded-[1rem] px-3 py-2.5 text-left text-[0.95rem] text-[var(--foreground)] transition hover:bg-[#f4f6f9]"
@@ -1264,14 +1425,14 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
                     <div className="headline-font flex h-7 w-7 items-center justify-center rounded-full bg-[#eef2ff] text-[0.72rem] font-bold text-[var(--primary)]">
                       {initialsFromEmail(authEmail)}
                     </div>
-                    Profile
+                    Perfil
                   </button>
                   <button
                     className="nav-font flex w-full items-center gap-3 rounded-[1rem] px-3 py-2.5 text-left text-[0.95rem] text-[#ba1a1a] transition hover:bg-[#fdf1f1]"
                     onClick={handleLogout}
                     type="button"
                   >
-                    Logout
+                    Salir
                   </button>
                 </div>
               ) : null}
@@ -1280,27 +1441,27 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col px-4 py-8 sm:px-6 md:px-8 md:py-10">
-        <div className="mb-8 sm:mb-10">
-          <nav className="nav-font mb-3 flex flex-wrap items-center gap-2 text-[0.82rem] text-[var(--muted)] sm:text-[0.95rem]">
-            <span>Workspace</span>
+      <main className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col px-4 py-7 sm:px-6 md:px-8 md:py-8">
+        <div className="mb-7 sm:mb-8">
+          <nav className="nav-font mb-2.5 flex flex-wrap items-center gap-2 text-[0.76rem] text-[var(--muted)] sm:text-[0.86rem]">
+            <span>Espacio</span>
             <span>/</span>
-            <span>{board.workspace.name}</span>
+            <span>{boardData.workspace.name}</span>
             <span>/</span>
             <span className="font-semibold text-[var(--primary)]">Kanban</span>
           </nav>
-          <h1 className="headline-font text-[2.25rem] font-extrabold leading-none text-[var(--foreground)] sm:text-[2.8rem] md:text-[3.3rem]">
+          <h1 className="headline-font text-[1.9rem] font-extrabold leading-none text-[var(--foreground)] sm:text-[2.3rem] md:text-[2.75rem]">
             {activeTab === "projects"
-              ? "Project Board"
+              ? "Tablero"
               : activeTab === "tasks"
-                ? "Task Center"
-                : "Calendar View"}
+                ? "Tareas"
+                : "Calendario"}
           </h1>
         </div>
 
         {activeTab === "projects" ? (
           <section key="projects" className="animate-tab-fade-in no-scrollbar -mx-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8">
-            <div className="flex min-w-max gap-5 sm:gap-6">
+            <div className="flex min-w-max gap-4 sm:gap-5">
               {visibleColumns.map((column) => (
                 <BoardColumn
                   key={column.id}
@@ -1325,7 +1486,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
               tasksView.map((task) => (
                 <button
                   key={task.id}
-                  className="kanban-card relative overflow-hidden p-5 text-left transition-transform duration-200 hover:-translate-y-0.5"
+                  className="kanban-card relative overflow-hidden p-4 text-left transition-transform duration-200 hover:-translate-y-0.5"
                   onClick={() => handleToggleTask(task.projectId, task.taskIndex)}
                   type="button"
                 >
@@ -1334,22 +1495,22 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
                     <p className="nav-font text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
                       {task.projectTitle}
                     </p>
-                    <h3 className={`headline-font mt-3 text-lg font-bold text-[var(--foreground)] ${task.done ? "line-through opacity-50" : ""}`}>
+                    <h3 className={`headline-font mt-2.5 text-[1rem] font-bold text-[var(--foreground)] ${task.done ? "line-through opacity-50" : ""}`}>
                       {task.label}
                     </h3>
-                    <div className="mt-3 flex items-center justify-between">
+                    <div className="mt-2.5 flex items-center justify-between">
                       <span className={`nav-font rounded-full px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-[0.14em] ${tagStyles[task.status]}`}>
                         {task.status.replaceAll("_", " ")}
                       </span>
                       <span className="nav-font text-xs text-[var(--muted-soft)]">
-                        {task.done ? "✓ Completada" : "○ Pendiente"}
+                        {task.done ? "Completada" : "Pendiente"}
                       </span>
                     </div>
                   </div>
                 </button>
               ))
             ) : (
-              <div className="nav-font rounded-[1.5rem] bg-[var(--surface-card)] p-6 text-[var(--muted)] shadow-[0_8px_20px_rgba(24,28,30,0.04)]">
+              <div className="nav-font rounded-[1.5rem] bg-[var(--surface-card)] p-5 text-sm text-[var(--muted)] shadow-[0_8px_20px_rgba(24,28,30,0.04)]">
                 No hay tareas para la busqueda actual.
               </div>
             )}
@@ -1362,7 +1523,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
               calendarView.map((project) => (
                 <button
                   key={project.id}
-                  className="kanban-card relative overflow-hidden p-6 text-left transition-transform duration-200 hover:-translate-y-0.5"
+                  className="kanban-card relative overflow-hidden p-5 text-left transition-transform duration-200 hover:-translate-y-0.5"
                   onClick={() => openCard(project)}
                   type="button"
                 >
@@ -1376,17 +1537,17 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
                         {project.status.replaceAll("_", " ")}
                       </span>
                     </div>
-                    <h3 className="headline-font mt-3 text-xl font-bold text-[var(--foreground)]">
+                    <h3 className="headline-font mt-2.5 text-[1.08rem] font-bold text-[var(--foreground)]">
                       {project.title}
                     </h3>
-                    <p className="nav-font mt-3 text-sm leading-6 text-[var(--muted-soft)]">
+                    <p className="nav-font mt-2.5 text-[0.88rem] leading-5 text-[var(--muted-soft)]">
                       {project.summary}
                     </p>
                   </div>
                 </button>
               ))
             ) : (
-              <div className="nav-font rounded-[1.5rem] bg-[var(--surface-card)] p-6 text-[var(--muted)] shadow-[0_8px_20px_rgba(24,28,30,0.04)]">
+              <div className="nav-font rounded-[1.5rem] bg-[var(--surface-card)] p-5 text-sm text-[var(--muted)] shadow-[0_8px_20px_rgba(24,28,30,0.04)]">
                 No hay proyectos para el calendario actual.
               </div>
             )}
@@ -1396,21 +1557,21 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
 
       <button
         aria-label="Agregar tarjeta"
-        className="fixed bottom-6 right-6 flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] text-white shadow-[0_24px_50px_rgba(0,64,223,0.35)] transition hover:scale-105 hover:shadow-[0_28px_56px_rgba(0,64,223,0.45)] active:scale-[0.97] sm:bottom-8 sm:right-8 sm:h-20 sm:w-20"
+        className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] text-white shadow-[0_24px_50px_rgba(0,64,223,0.35)] transition hover:scale-105 hover:shadow-[0_28px_56px_rgba(0,64,223,0.45)] active:scale-[0.97] sm:bottom-8 sm:right-8 sm:h-16 sm:w-16"
         onClick={() => setOverlay("add")}
         type="button"
       >
-        <span className="text-4xl font-light leading-none sm:text-5xl">+</span>
+        <span className="text-3xl font-light leading-none sm:text-4xl">+</span>
       </button>
 
       {overlay === "notifications" ? (
         <Overlay
           onClose={() => setOverlay(null)}
           subtitle="Actividad reciente del tablero y avisos de cambios."
-          title="Notifications"
+          title="Notificaciones"
         >
           <div className="space-y-3">
-            {board.activity.map((entry) => (
+            {boardData.activity.map((entry) => (
               <div key={entry.id} className="rounded-[1.25rem] bg-[#f7f9fb] p-4">
                 <p className="headline-font text-sm font-bold text-[var(--foreground)]">{entry.projectTitle}</p>
                 <p className="nav-font mt-2 text-sm leading-6 text-[var(--muted)]">{entry.summary}</p>
@@ -1426,14 +1587,14 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
       {overlay === "settings" ? (
         <CenteredPanel
           onClose={() => setOverlay(null)}
-          subtitle="Preferencias visuales de esta sesion."
-          title="Settings"
+          subtitle="Preferencias visuales de esta sesión."
+          title="Ajustes"
         >
           <div className="space-y-3">
             {[
-              ["compactCards", "Compact cards"],
-              ["showHints", "Show board hints"],
-              ["highlightUrgent", "Highlight urgent items"],
+              ["compactCards", "Tarjetas compactas"],
+              ["showHints", "Mostrar contexto"],
+              ["highlightUrgent", "Resaltar urgentes"],
             ].map(([key, label]) => (
               <button
                 key={key}
@@ -1465,59 +1626,23 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
       {overlay === "profile" && !selectedCard ? (
         <CenteredPanel
           onClose={() => setOverlay(null)}
-          subtitle="Sesion activa en este tablero."
-          title="Profile"
+          subtitle="Sesión activa en este tablero."
+          title="Perfil"
         >
           <div className="rounded-[1.75rem] bg-[#f7f9fb] p-6">
             <div className="headline-font flex h-16 w-16 items-center justify-center rounded-full bg-[#eef2ff] text-xl font-bold text-[var(--primary)]">
-              {initialsFromEmail(authEmail || HARDCODED_EMAIL)}
+              {initialsFromEmail(authEmail || DEFAULT_LOGIN_EMAIL)}
             </div>
-            <h3 className="headline-font mt-4 text-xl font-bold text-[var(--foreground)]">Maria</h3>
+            <h3 className="headline-font mt-4 text-xl font-bold text-[var(--foreground)]">{userName}</h3>
             <p className="nav-font mt-2 text-sm text-[var(--muted-soft)]">
-              {authEmail || HARDCODED_EMAIL}
+              {authEmail || DEFAULT_LOGIN_EMAIL}
             </p>
-            <p className="nav-font mt-2 text-sm text-[var(--muted)]">Owner · Workspace principal</p>
+            <p className="nav-font mt-2 text-sm text-[var(--muted)]">Owner · Espacio principal</p>
             <p className="nav-font mt-5 text-sm leading-6 text-[var(--muted-soft)]">
-              Sesion simulada como usuaria logueada. Desde aca podemos luego conectar autenticacion real.
+              Sesión activa validada contra MySQL. Desde acá podemos seguir creciendo permisos y perfiles reales.
             </p>
           </div>
         </CenteredPanel>
-      ) : null}
-
-      {overlay === "login" ? (
-        <Overlay
-          onClose={() => setOverlay(null)}
-          subtitle="Acceso temporal hardcodeado para avanzar rapido."
-          title="Login"
-        >
-          <form className="space-y-4" onSubmit={handleLogin}>
-            <label className="nav-font block text-sm text-[var(--foreground)]">
-              Email
-              <input
-                className="mt-2 w-full rounded-[1rem] border-none bg-[#f4f6f9] px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
-                onChange={(event) => setLoginEmail(event.target.value)}
-                type="text"
-                value={loginEmail}
-              />
-            </label>
-            <label className="nav-font block text-sm text-[var(--foreground)]">
-              Password
-              <input
-                className="mt-2 w-full rounded-[1rem] border-none bg-[#f4f6f9] px-4 py-3 text-sm focus:ring-2 focus:ring-[var(--primary)]/30"
-                onChange={(event) => setLoginPassword(event.target.value)}
-                type="password"
-                value={loginPassword}
-              />
-            </label>
-            {loginError ? <p className="nav-font text-sm text-[#ba1a1a]">{loginError}</p> : null}
-            <button
-              className="nav-font w-full rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 active:scale-[0.98]"
-              type="submit"
-            >
-              Entrar
-            </button>
-          </form>
-        </Overlay>
       ) : null}
 
       {overlay === "card" && selectedCard ? (
@@ -1533,7 +1658,7 @@ export function BoardApp({ initialBoard }: { initialBoard: BoardData }) {
         <CenteredPanel
           onClose={() => setOverlay(null)}
           subtitle="Crea una tarjeta nueva y guardala en el tablero."
-          title="New Card"
+          title="Nueva tarjeta"
         >
           <form className="space-y-4" onSubmit={handleCreateCard}>
             <div className="space-y-1.5">

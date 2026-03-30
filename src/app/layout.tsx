@@ -13,9 +13,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Kanban GitHub Agent",
+  title: "Kansito",
   description:
-    "Tablero Kanban en Next.js para administrar proyectos de GitHub y registrar cambios hechos por agentes.",
+    "Tablero Kanban para administrar proyectos, seguir estados y registrar cambios operativos.",
 };
 
 export default function RootLayout({

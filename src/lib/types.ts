@@ -51,6 +51,13 @@ export type BoardData = {
   activity: ActivityItem[];
 };
 
+export type SessionUser = {
+  id: number;
+  email: string;
+  fullName: string;
+  role: string;
+};
+
 export type AgentUpdatePayload = {
   projectId?: string;
   title: string;

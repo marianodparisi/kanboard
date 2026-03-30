@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { getRequestSessionUser } from "@/lib/auth";
 import {
   moveProject,
   toggleProjectTask,
@@ -12,6 +13,11 @@ type RouteContext = {
 };
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
+  const sessionUser = await getRequestSessionUser(request);
+  if (!sessionUser) {
+    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+  }
+
   const { id } = await context.params;
   const body = (await request.json()) as
     | ({ action: "move"; status: ProjectStatus })
@@ -24,16 +30,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         return NextResponse.json({ error: "Estado invalido." }, { status: 400 });
       }
 
-      const project = await moveProject(id, body.status);
+      const project = await moveProject(id, body.status, sessionUser.fullName);
       return NextResponse.json({ ok: true, project });
     }
 
     if (body.action === "toggle_task") {
-      const project = await toggleProjectTask(id, body.taskIndex);
+      const project = await toggleProjectTask(id, body.taskIndex, sessionUser.fullName);
       return NextResponse.json({ ok: true, project });
     }
 
-    const project = await updateProject(id, body);
+    const project = await updateProject(id, body, sessionUser.fullName);
     return NextResponse.json({ ok: true, project });
   } catch (error) {
     return NextResponse.json(

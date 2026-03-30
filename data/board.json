@@ -1,14 +1,14 @@
 {
   "workspace": {
-    "name": "Kanban GitHub Agent",
+    "name": "Kansito",
     "description": "Centro operativo para seguir proyectos, cambios aplicados por agente y estado de entrega.",
     "agentChannel": "POST /api/agent-updates",
-    "lastSyncedAt": "2026-03-29T23:00:23.580Z"
+    "lastSyncedAt": "2026-03-30T00:10:08.102Z"
   },
   "projects": [
     {
-      "id": "kanban-control-center",
-      "title": "Kanban Control Center",
+      "id": "kansito-control-center",
+      "title": "Kansito Control Center",
       "repository": "maria/kanban-github-agent",
       "owner": "Maria",
       "status": "in_progress",
@@ -19,7 +19,7 @@
         "agent"
       ],
       "summary": "Base inicial del tablero para centralizar proyectos, estados y actualizaciones ejecutadas desde Codex.",
-      "lastUpdate": "2026-03-29T18:30:00.000Z",
+      "lastUpdate": "2026-03-30T00:10:08.102Z",
       "priority": "high",
       "details": [
         "Scaffold en Next.js 16 con App Router y TypeScript.",
@@ -85,6 +85,33 @@
   ],
   "activity": [
     {
+      "id": "kanban-control-center-1774829408102",
+      "projectId": "kansito-control-center",
+      "projectTitle": "Kansito Control Center",
+      "createdAt": "2026-03-30T00:10:08.102Z",
+      "source": "cli",
+      "author": "Maria",
+      "summary": "Se actualizo la tarjeta \"Kansito Control Center\"."
+    },
+    {
+      "id": "kanban-control-center-1774829407039",
+      "projectId": "kansito-control-center",
+      "projectTitle": "Kansito Control Center",
+      "createdAt": "2026-03-30T00:10:07.039Z",
+      "source": "cli",
+      "author": "Maria",
+      "summary": "Se actualizo la tarjeta \"Kansito Control Center\"."
+    },
+    {
+      "id": "kanban-control-center-1774827347703",
+      "projectId": "kansito-control-center",
+      "projectTitle": "Kansito Control Center",
+      "createdAt": "2026-03-29T23:35:47.703Z",
+      "source": "cli",
+      "author": "Maria",
+      "summary": "Se actualizo la tarjeta \"Kansito Control Center\"."
+    },
+    {
       "id": "github-sync-layer-1774825223580",
       "projectId": "github-sync-layer",
       "projectTitle": "GitHub Sync Layer",
@@ -95,8 +122,8 @@
     },
     {
       "id": "activity-bootstrap",
-      "projectId": "kanban-control-center",
-      "projectTitle": "Kanban Control Center",
+      "projectId": "kansito-control-center",
+      "projectTitle": "Kansito Control Center",
       "createdAt": "2026-03-29T18:30:00.000Z",
       "source": "codex",
       "author": "Codex",

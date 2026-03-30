@@ -106,21 +106,21 @@ a {
 
 .kanban-column {
   border-radius: 2rem;
-  width: 270px;
-  flex: 0 0 270px;
+  width: 248px;
+  flex: 0 0 248px;
 }
 
 @media (min-width: 640px) {
   .kanban-column {
-    width: 290px;
-    flex-basis: 290px;
+    width: 264px;
+    flex-basis: 264px;
   }
 }
 
 @media (min-width: 1280px) {
   .kanban-column {
-    width: 300px;
-    flex-basis: 300px;
+    width: 280px;
+    flex-basis: 280px;
   }
 }
 
