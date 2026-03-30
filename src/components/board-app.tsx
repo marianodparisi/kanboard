@@ -504,6 +504,36 @@ function IconEdit() {
   );
 }
 
+function IconTrash() {
+  return (
+    <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M4 7h16m-10 4v5m4-5v5M9 4h6l1 2H8l1-2zm1 16h4a2 2 0 002-2V7H8v11a2 2 0 002 2z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function IconArrowUp() {
+  return (
+    <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+      <path d="M12 19V5m0 0l-5 5m5-5l5 5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
+function IconArrowDown() {
+  return (
+    <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+      <path d="M12 5v14m0 0l-5-5m5 5l5-5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
 function Dropdown({
   value,
   options,
@@ -581,26 +611,20 @@ function CardModal({
   const [editStatus, setEditStatus] = useState<ProjectStatus>(project.status);
   const [editPriority, setEditPriority] = useState<"low" | "medium" | "high">(project.priority);
   const [editing, setEditing] = useState<null | "title" | "summary" | "tags">(null);
+  const [editingTaskIndex, setEditingTaskIndex] = useState<number | null>(null);
+  const [editingTaskLabel, setEditingTaskLabel] = useState("");
   const [editTitle, setEditTitle] = useState(project.title);
   const [editRepo, setEditRepo] = useState(project.repository);
   const [editSummary, setEditSummary] = useState(project.summary);
   const [editTags, setEditTags] = useState(project.tags.join(", "));
   const [newTaskLabel, setNewTaskLabel] = useState("");
   const [addingTask, setAddingTask] = useState(false);
+  const [draggingTaskIndex, setDraggingTaskIndex] = useState<number | null>(null);
   const [closing, setClosing] = useState(false);
 
   function handleClose() {
     setClosing(true);
   }
-
-  useEffect(() => {
-    setEditStatus(project.status);
-    setEditPriority(project.priority);
-    setEditTitle(project.title);
-    setEditRepo(project.repository);
-    setEditSummary(project.summary);
-    setEditTags(project.tags.join(", "));
-  }, [project]);
 
   const statusOptions: Array<{ value: ProjectStatus; label: string; cls: string }> = [
     { value: "backlog", label: "Pendiente", cls: "bg-[#eef2ff] text-[var(--chip-blue)]" },
@@ -628,9 +652,25 @@ function CardModal({
 
   async function saveNewTask() {
     if (!newTaskLabel.trim()) return;
-    await onPatch({ tasks: [...project.tasks, { label: newTaskLabel.trim(), done: false }] });
+    await onPatch({ action: "add_task", label: newTaskLabel.trim() });
     setNewTaskLabel("");
     setAddingTask(false);
+  }
+
+  async function saveTaskEdit() {
+    if (editingTaskIndex === null || !editingTaskLabel.trim()) return;
+    await onPatch({
+      action: "edit_task",
+      taskIndex: editingTaskIndex,
+      label: editingTaskLabel.trim(),
+    });
+    setEditingTaskIndex(null);
+    setEditingTaskLabel("");
+  }
+
+  function startTaskEditing(taskIndex: number, label: string) {
+    setEditingTaskIndex(taskIndex);
+    setEditingTaskLabel(label);
   }
 
   async function saveEditing() {
@@ -816,25 +856,126 @@ function CardModal({
               <ul className="nav-font space-y-1 text-sm text-[var(--foreground)]">
                 {project.tasks.length ? (
                   project.tasks.map((task, i) => (
-                    <li key={i}>
-                      <button
-                        className="flex w-full items-start gap-2.5 rounded-[0.75rem] px-1 py-1.5 text-left transition hover:bg-[var(--surface-container)]"
-                        onClick={() => onPatch({ action: "toggle_task", taskIndex: i })}
-                        type="button"
+                    <li
+                      key={i}
+                      draggable
+                      onDragEnd={() => setDraggingTaskIndex(null)}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDragStart={() => setDraggingTaskIndex(i)}
+                      onDrop={() => {
+                        if (draggingTaskIndex === null || draggingTaskIndex === i) {
+                          setDraggingTaskIndex(null);
+                          return;
+                        }
+                        void onPatch({
+                          action: "move_task",
+                          fromIndex: draggingTaskIndex,
+                          toIndex: i,
+                        });
+                        setDraggingTaskIndex(null);
+                      }}
+                    >
+                      <div
+                        className={`rounded-[0.95rem] px-1 py-1.5 transition hover:bg-[var(--surface-container)] ${
+                          draggingTaskIndex === i ? "bg-[var(--surface-container)]" : ""
+                        }`}
                       >
-                        <span className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border transition ${
-                          task.done
-                            ? "border-[var(--tertiary)] bg-[var(--tertiary)] text-white"
-                            : "border-[var(--muted-soft)] text-transparent"
-                        }`}>
-                          {task.done && (
-                            <svg aria-hidden="true" className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24">
-                              <path d="M5 13l4 4L19 7" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
-                            </svg>
-                          )}
-                        </span>
-                        <span className={`leading-[1.5] ${task.done ? "line-through opacity-40" : ""}`}>{task.label}</span>
-                      </button>
+                        <div className="flex items-start gap-2.5">
+                          <button
+                            className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border transition ${
+                              task.done
+                                ? "border-[var(--tertiary)] bg-[var(--tertiary)] text-white"
+                                : "border-[var(--muted-soft)] text-transparent"
+                            }`}
+                            onClick={() => onPatch({ action: "toggle_task", taskIndex: i })}
+                            type="button"
+                          >
+                            {task.done && (
+                              <svg aria-hidden="true" className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24">
+                                <path d="M5 13l4 4L19 7" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
+                              </svg>
+                            )}
+                          </button>
+                          <div className="min-w-0 flex-1">
+                            {editingTaskIndex === i ? (
+                              <div className="space-y-2">
+                                <input
+                                  autoFocus
+                                  className="w-full rounded-[0.75rem] border-none bg-[var(--surface-card)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+                                  onChange={(e) => setEditingTaskLabel(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") void saveTaskEdit();
+                                    if (e.key === "Escape") {
+                                      setEditingTaskIndex(null);
+                                      setEditingTaskLabel("");
+                                    }
+                                  }}
+                                  value={editingTaskLabel}
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    className="nav-font rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] px-3 py-1 text-[0.72rem] font-semibold text-white"
+                                    onClick={() => void saveTaskEdit()}
+                                    type="button"
+                                  >
+                                    Guardar
+                                  </button>
+                                  <button
+                                    className="nav-font rounded-full bg-[var(--surface-card)] px-3 py-1 text-[0.72rem] font-medium text-[var(--muted)]"
+                                    onClick={() => {
+                                      setEditingTaskIndex(null);
+                                      setEditingTaskLabel("");
+                                    }}
+                                    type="button"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className={`leading-[1.5] ${task.done ? "line-through opacity-40" : ""}`}>{task.label}</span>
+                            )}
+                          </div>
+                        </div>
+                        {editingTaskIndex !== i ? (
+                          <div className="mt-2 flex items-center gap-1 pl-6">
+                            <button
+                              aria-label="Subir tarea"
+                              className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted-soft)] transition hover:bg-[var(--surface-card)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-30"
+                              disabled={i === 0}
+                              onClick={() => onPatch({ action: "move_task", fromIndex: i, toIndex: i - 1 })}
+                              type="button"
+                            >
+                              <IconArrowUp />
+                            </button>
+                            <button
+                              aria-label="Bajar tarea"
+                              className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted-soft)] transition hover:bg-[var(--surface-card)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-30"
+                              disabled={i === project.tasks.length - 1}
+                              onClick={() => onPatch({ action: "move_task", fromIndex: i, toIndex: i + 1 })}
+                              type="button"
+                            >
+                              <IconArrowDown />
+                            </button>
+                            <button
+                              aria-label="Editar tarea"
+                              className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted-soft)] transition hover:bg-[var(--surface-card)] hover:text-[var(--foreground)]"
+                              onClick={() => startTaskEditing(i, task.label)}
+                              type="button"
+                            >
+                              <IconEdit />
+                            </button>
+                            <button
+                              aria-label="Borrar tarea"
+                              className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted-soft)] transition hover:bg-[#fff1f1] hover:text-[#ba1a1a]"
+                              onClick={() => onPatch({ action: "delete_task", taskIndex: i })}
+                              type="button"
+                            >
+                              <IconTrash />
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
                     </li>
                   ))
                 ) : (
@@ -1027,6 +1168,13 @@ export function BoardApp({
   const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [form, setForm] = useState<CreateCardForm>(initialForm);
+  const [newTaskProjectId, setNewTaskProjectId] = useState("");
+  const [newTaskLabel, setNewTaskLabel] = useState("");
+  const [editingTaskView, setEditingTaskView] = useState<{
+    projectId: string;
+    taskIndex: number;
+  } | null>(null);
+  const [editingTaskViewLabel, setEditingTaskViewLabel] = useState("");
   const [createError, setCreateError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [settings, setSettings] = useState({
@@ -1075,6 +1223,23 @@ export function BoardApp({
       (a, b) => new Date(b.lastUpdate).getTime() - new Date(a.lastUpdate).getTime(),
     );
   }, [filteredProjects]);
+
+  useEffect(() => {
+    if (!boardData.projects.length) {
+      if (newTaskProjectId) {
+        setNewTaskProjectId("");
+      }
+      return;
+    }
+
+    const projectStillExists = boardData.projects.some(
+      (project) => project.id === newTaskProjectId,
+    );
+
+    if (!newTaskProjectId || !projectStillExists) {
+      setNewTaskProjectId(boardData.projects[0].id);
+    }
+  }, [boardData.projects, newTaskProjectId]);
 
   useEffect(() => {
     if (overlay !== "card") {
@@ -1225,6 +1390,79 @@ export function BoardApp({
       projectId,
       { action: "toggle_task", taskIndex },
       { refreshSelected: true },
+    );
+
+    if (selectedCard?.id === updated.id) {
+      setSelectedCard(updated);
+    }
+  }
+
+  async function handleAddTask(projectId: string, label: string) {
+    const normalizedLabel = label.trim();
+
+    if (!projectId || !normalizedLabel) {
+      return;
+    }
+
+    const updated = await patchProject(
+      projectId,
+      { action: "add_task", label: normalizedLabel },
+      { refreshSelected: selectedCard?.id === projectId },
+    );
+
+    if (selectedCard?.id === updated.id) {
+      setSelectedCard(updated);
+    }
+
+    setNewTaskLabel("");
+  }
+
+  async function handleDeleteTask(projectId: string, taskIndex: number) {
+    const updated = await patchProject(
+      projectId,
+      { action: "delete_task", taskIndex },
+      { refreshSelected: selectedCard?.id === projectId },
+    );
+
+    if (selectedCard?.id === updated.id) {
+      setSelectedCard(updated);
+    }
+  }
+
+  async function handleEditTask(
+    projectId: string,
+    taskIndex: number,
+    label: string,
+  ) {
+    const normalizedLabel = label.trim();
+
+    if (!normalizedLabel) {
+      return;
+    }
+
+    const updated = await patchProject(
+      projectId,
+      { action: "edit_task", taskIndex, label: normalizedLabel },
+      { refreshSelected: selectedCard?.id === projectId },
+    );
+
+    if (selectedCard?.id === updated.id) {
+      setSelectedCard(updated);
+    }
+
+    setEditingTaskView(null);
+    setEditingTaskViewLabel("");
+  }
+
+  async function handleMoveTask(
+    projectId: string,
+    fromIndex: number,
+    toIndex: number,
+  ) {
+    const updated = await patchProject(
+      projectId,
+      { action: "move_task", fromIndex, toIndex },
+      { refreshSelected: selectedCard?.id === projectId },
     );
 
     if (selectedCard?.id === updated.id) {
@@ -1481,23 +1719,120 @@ export function BoardApp({
         ) : null}
 
         {activeTab === "tasks" ? (
-          <section key="tasks" className="animate-tab-fade-in grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <section key="tasks" className="animate-tab-fade-in space-y-4">
+            <div className="kanban-card p-4 sm:p-5">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                <div className="min-w-0 flex-1">
+                  <p className="section-title mb-2">Nueva tarea</p>
+                  <label className="nav-font block text-xs font-semibold text-[var(--muted)]">
+                    Proyecto
+                    <select
+                      className="mt-2 w-full rounded-[1rem] border-none bg-[var(--surface-container)] px-4 py-3 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+                      onChange={(event) => setNewTaskProjectId(event.target.value)}
+                      value={newTaskProjectId}
+                    >
+                      {boardData.projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="min-w-0 flex-[1.35]">
+                  <label className="nav-font block text-xs font-semibold text-[var(--muted)]">
+                    Tarea
+                    <input
+                      className="mt-2 w-full rounded-[1rem] border-none bg-[var(--surface-container)] px-4 py-3 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+                      onChange={(event) => setNewTaskLabel(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          void handleAddTask(newTaskProjectId, newTaskLabel);
+                        }
+                      }}
+                      placeholder="Ej: preparar release notes del sprint"
+                      value={newTaskLabel}
+                    />
+                  </label>
+                </div>
+                <button
+                  className="nav-font rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!boardData.projects.length || !newTaskLabel.trim()}
+                  onClick={() => void handleAddTask(newTaskProjectId, newTaskLabel)}
+                  type="button"
+                >
+                  Agregar tarea
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {tasksView.length ? (
               tasksView.map((task) => (
-                <button
+                <div
                   key={task.id}
-                  className="kanban-card relative overflow-hidden p-4 text-left transition-transform duration-200 hover:-translate-y-0.5"
-                  onClick={() => handleToggleTask(task.projectId, task.taskIndex)}
-                  type="button"
+                  className="kanban-card relative overflow-hidden p-4 transition-transform duration-200 hover:-translate-y-0.5"
                 >
                   <div className={`absolute bottom-0 left-0 top-0 w-1.5 ${barStyles[task.status]}`} />
                   <div className="pl-2">
                     <p className="nav-font text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
                       {task.projectTitle}
                     </p>
-                    <h3 className={`headline-font mt-2.5 text-[1rem] font-bold text-[var(--foreground)] ${task.done ? "line-through opacity-50" : ""}`}>
-                      {task.label}
-                    </h3>
+                    {editingTaskView?.projectId === task.projectId &&
+                    editingTaskView.taskIndex === task.taskIndex ? (
+                      <div className="mt-2.5 space-y-2">
+                        <input
+                          autoFocus
+                          className="w-full rounded-[0.9rem] border-none bg-[var(--surface-container)] px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+                          onChange={(event) => setEditingTaskViewLabel(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              void handleEditTask(
+                                task.projectId,
+                                task.taskIndex,
+                                editingTaskViewLabel,
+                              );
+                            }
+                            if (event.key === "Escape") {
+                              setEditingTaskView(null);
+                              setEditingTaskViewLabel("");
+                            }
+                          }}
+                          value={editingTaskViewLabel}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            className="nav-font rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-strong))] px-3 py-1.5 text-xs font-semibold text-white"
+                            onClick={() =>
+                              void handleEditTask(
+                                task.projectId,
+                                task.taskIndex,
+                                editingTaskViewLabel,
+                              )
+                            }
+                            type="button"
+                          >
+                            Guardar
+                          </button>
+                          <button
+                            className="nav-font rounded-full bg-[var(--surface-container)] px-3 py-1.5 text-xs font-medium text-[var(--muted)]"
+                            onClick={() => {
+                              setEditingTaskView(null);
+                              setEditingTaskViewLabel("");
+                            }}
+                            type="button"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <h3 className={`headline-font mt-2.5 text-[1rem] font-bold text-[var(--foreground)] ${task.done ? "line-through opacity-50" : ""}`}>
+                        {task.label}
+                      </h3>
+                    )}
                     <div className="mt-2.5 flex items-center justify-between">
                       <span className={`nav-font rounded-full px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-[0.14em] ${tagStyles[task.status]}`}>
                         {task.status.replaceAll("_", " ")}
@@ -1506,14 +1841,85 @@ export function BoardApp({
                         {task.done ? "Completada" : "Pendiente"}
                       </span>
                     </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <button
+                        className="nav-font rounded-full bg-[var(--surface-container)] px-3 py-1.5 text-xs font-medium text-[var(--foreground)] transition hover:bg-[var(--surface-variant)]"
+                        onClick={() => handleToggleTask(task.projectId, task.taskIndex)}
+                        type="button"
+                      >
+                        {task.done ? "Marcar pendiente" : "Marcar hecha"}
+                      </button>
+                      <button
+                        className="nav-font rounded-full bg-[var(--surface-container)] px-3 py-1.5 text-xs font-medium text-[var(--foreground)] transition hover:bg-[var(--surface-variant)]"
+                        onClick={() => {
+                          const project = boardData.projects.find(
+                            (candidate) => candidate.id === task.projectId,
+                          );
+                          if (project) {
+                            openCard(project);
+                          }
+                        }}
+                        type="button"
+                      >
+                        Abrir proyecto
+                      </button>
+                      <button
+                        className="nav-font rounded-full bg-[var(--surface-container)] px-3 py-1.5 text-xs font-medium text-[var(--foreground)] transition hover:bg-[var(--surface-variant)]"
+                        onClick={() => {
+                          setEditingTaskView({
+                            projectId: task.projectId,
+                            taskIndex: task.taskIndex,
+                          });
+                          setEditingTaskViewLabel(task.label);
+                        }}
+                        type="button"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        aria-label="Subir tarea"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted-soft)] transition hover:bg-[var(--surface-container)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-30"
+                        disabled={task.taskIndex === 0}
+                        onClick={() =>
+                          handleMoveTask(task.projectId, task.taskIndex, task.taskIndex - 1)
+                        }
+                        type="button"
+                      >
+                        <IconArrowUp />
+                      </button>
+                      <button
+                        aria-label="Bajar tarea"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted-soft)] transition hover:bg-[var(--surface-container)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-30"
+                        disabled={
+                          task.taskIndex ===
+                          (boardData.projects.find((candidate) => candidate.id === task.projectId)
+                            ?.tasks.length ?? 1) - 1
+                        }
+                        onClick={() =>
+                          handleMoveTask(task.projectId, task.taskIndex, task.taskIndex + 1)
+                        }
+                        type="button"
+                      >
+                        <IconArrowDown />
+                      </button>
+                      <button
+                        aria-label="Borrar tarea"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted-soft)] transition hover:bg-[#fff1f1] hover:text-[#ba1a1a]"
+                        onClick={() => handleDeleteTask(task.projectId, task.taskIndex)}
+                        type="button"
+                      >
+                        <IconTrash />
+                      </button>
+                    </div>
                   </div>
-                </button>
+                </div>
               ))
             ) : (
               <div className="nav-font rounded-[1.5rem] bg-[var(--surface-card)] p-5 text-sm text-[var(--muted)] shadow-[0_8px_20px_rgba(24,28,30,0.04)]">
                 No hay tareas para la busqueda actual.
               </div>
             )}
+            </div>
           </section>
         ) : null}
 
@@ -1647,6 +2053,7 @@ export function BoardApp({
 
       {overlay === "card" && selectedCard ? (
         <CardModal
+          key={`${selectedCard.id}-${selectedCard.lastUpdate}`}
           project={selectedCard}
           onClose={() => setOverlay(null)}
           onMove={handleMoveProject}

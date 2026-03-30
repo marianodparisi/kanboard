@@ -697,3 +697,108 @@ export async function toggleProjectTask(
 
   return updateProject(projectId, { tasks: nextTasks }, actorName);
 }
+
+export async function addProjectTask(
+  projectId: string,
+  label: string,
+  actorName?: string,
+) {
+  const current = await findProjectById(projectId);
+
+  if (!current) {
+    throw new Error("Proyecto no encontrado.");
+  }
+
+  const normalizedLabel = label.trim();
+
+  if (!normalizedLabel) {
+    throw new Error("La tarea no puede estar vacia.");
+  }
+
+  const nextTasks: ProjectTask[] = [
+    ...current.tasks,
+    { label: normalizedLabel, done: false },
+  ];
+
+  return updateProject(projectId, { tasks: nextTasks }, actorName);
+}
+
+export async function updateProjectTaskLabel(
+  projectId: string,
+  taskIndex: number,
+  label: string,
+  actorName?: string,
+) {
+  const current = await findProjectById(projectId);
+
+  if (!current) {
+    throw new Error("Proyecto no encontrado.");
+  }
+
+  if (taskIndex < 0 || taskIndex >= current.tasks.length) {
+    throw new Error("Tarea no encontrada.");
+  }
+
+  const normalizedLabel = label.trim();
+
+  if (!normalizedLabel) {
+    throw new Error("La tarea no puede estar vacia.");
+  }
+
+  const nextTasks: ProjectTask[] = current.tasks.map((task, index) =>
+    index === taskIndex ? { ...task, label: normalizedLabel } : task,
+  );
+
+  return updateProject(projectId, { tasks: nextTasks }, actorName);
+}
+
+export async function deleteProjectTask(
+  projectId: string,
+  taskIndex: number,
+  actorName?: string,
+) {
+  const current = await findProjectById(projectId);
+
+  if (!current) {
+    throw new Error("Proyecto no encontrado.");
+  }
+
+  if (taskIndex < 0 || taskIndex >= current.tasks.length) {
+    throw new Error("Tarea no encontrada.");
+  }
+
+  const nextTasks = current.tasks.filter((_, index) => index !== taskIndex);
+  return updateProject(projectId, { tasks: nextTasks }, actorName);
+}
+
+export async function reorderProjectTask(
+  projectId: string,
+  fromIndex: number,
+  toIndex: number,
+  actorName?: string,
+) {
+  const current = await findProjectById(projectId);
+
+  if (!current) {
+    throw new Error("Proyecto no encontrado.");
+  }
+
+  if (
+    fromIndex < 0 ||
+    fromIndex >= current.tasks.length ||
+    toIndex < 0 ||
+    toIndex >= current.tasks.length
+  ) {
+    throw new Error("Movimiento de tarea invalido.");
+  }
+
+  if (fromIndex === toIndex) {
+    return current;
+  }
+
+  const nextTasks = [...current.tasks];
+  const [task] = nextTasks.splice(fromIndex, 1);
+  nextTasks.splice(toIndex, 0, task);
+
+  return updateProject(projectId, { tasks: nextTasks }, actorName);
+}

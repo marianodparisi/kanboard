@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getRequestSessionUser } from "@/lib/auth";
 import {
+  addProjectTask,
+  deleteProjectTask,
   moveProject,
+  reorderProjectTask,
   toggleProjectTask,
+  updateProjectTaskLabel,
   updateProject,
 } from "@/lib/board-store";
 import { type ProjectStatus, type ProjectUpdatePayload, statuses } from "@/lib/types";
@@ -22,6 +26,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const body = (await request.json()) as
     | ({ action: "move"; status: ProjectStatus })
     | ({ action: "toggle_task"; taskIndex: number })
+    | ({ action: "add_task"; label: string })
+    | ({ action: "edit_task"; taskIndex: number; label: string })
+    | ({ action: "delete_task"; taskIndex: number })
+    | ({ action: "move_task"; fromIndex: number; toIndex: number })
     | ({ action?: "update" } & ProjectUpdatePayload);
 
   try {
@@ -36,6 +44,36 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     if (body.action === "toggle_task") {
       const project = await toggleProjectTask(id, body.taskIndex, sessionUser.fullName);
+      return NextResponse.json({ ok: true, project });
+    }
+
+    if (body.action === "add_task") {
+      const project = await addProjectTask(id, body.label, sessionUser.fullName);
+      return NextResponse.json({ ok: true, project });
+    }
+
+    if (body.action === "edit_task") {
+      const project = await updateProjectTaskLabel(
+        id,
+        body.taskIndex,
+        body.label,
+        sessionUser.fullName,
+      );
+      return NextResponse.json({ ok: true, project });
+    }
+
+    if (body.action === "delete_task") {
+      const project = await deleteProjectTask(id, body.taskIndex, sessionUser.fullName);
+      return NextResponse.json({ ok: true, project });
+    }
+
+    if (body.action === "move_task") {
+      const project = await reorderProjectTask(
+        id,
+        body.fromIndex,
+        body.toIndex,
+        sessionUser.fullName,
+      );
       return NextResponse.json({ ok: true, project });
     }
 
