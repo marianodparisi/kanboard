@@ -26,31 +26,31 @@ const visibleColumns: {
 }[] = [
   {
     id: "backlog",
-    label: "Backlog",
+    label: "Pendiente",
     tone: "bg-[var(--primary)] shadow-[0_0_12px_rgba(0,64,223,0.35)]",
     surface: "bg-[#eef2f4]",
   },
   {
     id: "in_progress",
-    label: "In Progress",
+    label: "En curso",
     tone: "bg-[var(--secondary-deep)] shadow-[0_0_12px_rgba(160,65,0,0.22)]",
     surface: "bg-[var(--surface-container)]",
   },
   {
     id: "on_hold",
-    label: "On Hold",
+    label: "En pausa",
     tone: "bg-[var(--hold)] shadow-[0_0_12px_rgba(116,81,184,0.22)]",
     surface: "bg-[#ece9f3]",
   },
   {
     id: "review",
-    label: "Review",
+    label: "Revisión",
     tone: "bg-[#d97706] shadow-[0_0_12px_rgba(217,119,6,0.22)]",
     surface: "bg-[#f6eee3]",
   },
   {
     id: "done",
-    label: "Done",
+    label: "Hecho",
     tone: "bg-[var(--tertiary)] shadow-[0_0_12px_rgba(34,96,63,0.22)]",
     surface: "bg-[var(--surface-high)]",
   },
@@ -122,10 +122,10 @@ function cardLabel(project: KanbanProject) {
 }
 
 function cardMeta(project: KanbanProject) {
-  if (project.status === "done") return "Completed";
-  if (project.status === "on_hold") return "Paused";
-  if (project.priority === "high") return "Urgent";
-  return project.status === "review" ? "Review" : "Active";
+  if (project.status === "done") return "Completado";
+  if (project.status === "on_hold") return "En pausa";
+  if (project.priority === "high") return "Urgente";
+  return project.status === "review" ? "En revisión" : "Activo";
 }
 
 function avatarSeed(project: KanbanProject) {
@@ -409,8 +409,8 @@ function LoginGate({
 
             <div className="mt-10 grid gap-4 sm:grid-cols-3">
               {[
-                ["Projects", "Vista principal para seguir cards y estados."],
-                ["Tasks", "Tareas accionables por proyecto con marcado rapido."],
+                ["Proyectos", "Vista principal para seguir tarjetas y estados."],
+                ["Tareas", "Tareas accionables por proyecto con marcado rápido."],
                 ["Calendario", "Línea temporal de actividad y cambios recientes."],
               ].map(([title, copy]) => (
                 <div
@@ -603,17 +603,17 @@ function CardModal({
   }, [project]);
 
   const statusOptions: Array<{ value: ProjectStatus; label: string; cls: string }> = [
-    { value: "backlog", label: "Backlog", cls: "bg-[#eef2ff] text-[var(--chip-blue)]" },
-    { value: "in_progress", label: "In Progress", cls: "bg-[#fff3eb] text-[var(--chip-orange)]" },
-    { value: "on_hold", label: "On Hold", cls: "bg-[#f3eeff] text-[var(--chip-violet)]" },
-    { value: "review", label: "Review", cls: "bg-[#fff3eb] text-[var(--chip-orange)]" },
-    { value: "done", label: "Done", cls: "bg-[#eaf5ef] text-[var(--chip-green)]" },
+    { value: "backlog", label: "Pendiente", cls: "bg-[#eef2ff] text-[var(--chip-blue)]" },
+    { value: "in_progress", label: "En curso", cls: "bg-[#fff3eb] text-[var(--chip-orange)]" },
+    { value: "on_hold", label: "En pausa", cls: "bg-[#f3eeff] text-[var(--chip-violet)]" },
+    { value: "review", label: "Revisión", cls: "bg-[#fff3eb] text-[var(--chip-orange)]" },
+    { value: "done", label: "Hecho", cls: "bg-[#eaf5ef] text-[var(--chip-green)]" },
   ];
 
   const priorityOptions: Array<{ value: string; label: string; cls: string }> = [
-    { value: "low", label: "Low priority", cls: "bg-[#f0faf4] text-[var(--tertiary)]" },
-    { value: "medium", label: "Medium priority", cls: "bg-[#fff8ec] text-[var(--secondary-deep)]" },
-    { value: "high", label: "High priority", cls: "bg-[#fff1f1] text-[#ba1a1a]" },
+    { value: "low", label: "Prioridad baja", cls: "bg-[#f0faf4] text-[var(--tertiary)]" },
+    { value: "medium", label: "Prioridad media", cls: "bg-[#fff8ec] text-[var(--secondary-deep)]" },
+    { value: "high", label: "Prioridad alta", cls: "bg-[#fff1f1] text-[#ba1a1a]" },
   ];
 
   async function handleStatusChange(status: ProjectStatus) {
@@ -812,7 +812,7 @@ function CardModal({
               </ul>
             </div>
             <div className="rounded-[1.5rem] bg-[var(--surface-low)] p-5">
-              <p className="section-title mb-3">Tasks</p>
+              <p className="section-title mb-3">Tareas</p>
               <ul className="nav-font space-y-1 text-sm text-[var(--foreground)]">
                 {project.tasks.length ? (
                   project.tasks.map((task, i) => (
@@ -1321,7 +1321,7 @@ export function BoardApp({
   return (
     <div className="kanban-shell flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 bg-[var(--surface)]/95 backdrop-blur shadow-[0_4px_28px_rgba(24,28,30,0.05)]">
-        <div className="mx-auto flex w-full max-w-[1480px] items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-7">
+        <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-7">
           <div className="flex items-center gap-4 sm:gap-5">
             <span className="headline-font text-[1.2rem] font-extrabold text-[var(--foreground)] sm:text-[1.45rem]">
               Kansito
@@ -1374,7 +1374,7 @@ export function BoardApp({
                 onClick={() => setIsUserMenuOpen((current) => !current)}
                 type="button"
               >
-                <div className="headline-font flex h-9 w-9 items-center justify-center rounded-full bg-[#eef2ff] text-[0.8rem] font-bold text-[var(--primary)]">
+              <div className="headline-font flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[#eef2ff] text-[0.78rem] font-bold text-[var(--primary)]">
                   {initialsFromEmail(authEmail)}
                 </div>
                 <div className="hidden sm:block">
@@ -1441,7 +1441,7 @@ export function BoardApp({
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col px-4 py-7 sm:px-6 md:px-8 md:py-8">
+      <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-6 md:px-8 md:py-7">
         <div className="mb-7 sm:mb-8">
           <nav className="nav-font mb-2.5 flex flex-wrap items-center gap-2 text-[0.76rem] text-[var(--muted)] sm:text-[0.86rem]">
             <span>Espacio</span>
@@ -1450,7 +1450,7 @@ export function BoardApp({
             <span>/</span>
             <span className="font-semibold text-[var(--primary)]">Kanban</span>
           </nav>
-          <h1 className="headline-font text-[1.9rem] font-extrabold leading-none text-[var(--foreground)] sm:text-[2.3rem] md:text-[2.75rem]">
+          <h1 className="headline-font text-[1.72rem] font-extrabold leading-none text-[var(--foreground)] sm:text-[2.05rem] md:text-[2.45rem]">
             {activeTab === "projects"
               ? "Tablero"
               : activeTab === "tasks"
@@ -1686,11 +1686,11 @@ export function BoardApp({
                 <label className="nav-font block text-xs font-semibold text-[var(--muted)]">Estado</label>
                 <Dropdown
                   options={[
-                    { value: "backlog", label: "Backlog", cls: "bg-[#eef2ff] text-[var(--chip-blue)]" },
-                    { value: "in_progress", label: "In Progress", cls: "bg-[#fff3eb] text-[var(--chip-orange)]" },
-                    { value: "on_hold", label: "On Hold", cls: "bg-[#f3eeff] text-[var(--chip-violet)]" },
-                    { value: "review", label: "Review", cls: "bg-[#fff3eb] text-[var(--chip-orange)]" },
-                    { value: "done", label: "Done", cls: "bg-[#eaf5ef] text-[var(--chip-green)]" },
+                    { value: "backlog", label: "Pendiente", cls: "bg-[#eef2ff] text-[var(--chip-blue)]" },
+                    { value: "in_progress", label: "En curso", cls: "bg-[#fff3eb] text-[var(--chip-orange)]" },
+                    { value: "on_hold", label: "En pausa", cls: "bg-[#f3eeff] text-[var(--chip-violet)]" },
+                    { value: "review", label: "Revisión", cls: "bg-[#fff3eb] text-[var(--chip-orange)]" },
+                    { value: "done", label: "Hecho", cls: "bg-[#eaf5ef] text-[var(--chip-green)]" },
                   ]}
                   value={form.status}
                   onChange={(v) => setForm((current) => ({ ...current, status: v as ProjectStatus }))}
@@ -1700,9 +1700,9 @@ export function BoardApp({
                 <label className="nav-font block text-xs font-semibold text-[var(--muted)]">Prioridad</label>
                 <Dropdown
                   options={[
-                    { value: "low", label: "Low priority", cls: "bg-[#f0faf4] text-[var(--tertiary)]" },
-                    { value: "medium", label: "Medium priority", cls: "bg-[#fff8ec] text-[var(--secondary-deep)]" },
-                    { value: "high", label: "High priority", cls: "bg-[#fff1f1] text-[#ba1a1a]" },
+                    { value: "low", label: "Prioridad baja", cls: "bg-[#f0faf4] text-[var(--tertiary)]" },
+                    { value: "medium", label: "Prioridad media", cls: "bg-[#fff8ec] text-[var(--secondary-deep)]" },
+                    { value: "high", label: "Prioridad alta", cls: "bg-[#fff1f1] text-[#ba1a1a]" },
                   ]}
                   value={form.priority}
                   onChange={(v) => setForm((current) => ({ ...current, priority: v as "low" | "medium" | "high" }))}

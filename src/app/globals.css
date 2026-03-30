@@ -112,15 +112,22 @@ a {
 
 @media (min-width: 640px) {
   .kanban-column {
-    width: 264px;
-    flex-basis: 264px;
+    width: 258px;
+    flex-basis: 258px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .kanban-column {
+    width: 248px;
+    flex-basis: 248px;
   }
 }
 
 @media (min-width: 1280px) {
   .kanban-column {
-    width: 280px;
-    flex-basis: 280px;
+    width: 266px;
+    flex-basis: 266px;
   }
 }
 

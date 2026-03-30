@@ -66,7 +66,7 @@ const defaultBoard: BoardData = {
       filesChanged: ["README.md"],
       tasks: [
         { label: "Diseñar credenciales para GitHub", done: false },
-        { label: "Crear endpoint de sincronizacion", done: false },
+        { label: "Crear endpoint de sincronización", done: false },
         { label: "Agregar filtros por repositorio", done: false },
       ],
     },
@@ -80,7 +80,7 @@ const defaultBoard: BoardData = {
       source: "codex",
       author: "Codex",
       summary:
-        "Se genero la base del tablero y quedo lista la primera interfaz para registrar avances tecnicos.",
+        "Se generó la base del tablero y quedó lista la primera interfaz para registrar avances técnicos.",
     },
     {
       id: "activity-roadmap",
@@ -90,7 +90,7 @@ const defaultBoard: BoardData = {
       source: "api",
       author: "Sistema",
       summary:
-        "Se propuso una capa de sincronizacion para vincular repositorios y automatizar cambios de estado.",
+        "Se propuso una capa de sincronización para vincular repositorios y automatizar cambios de estado.",
     },
   ],
 };
@@ -659,7 +659,7 @@ export async function updateProject(
     createdAt: nextProject.lastUpdate,
     source: "cli",
     author: actorName,
-    summary: `Se actualizo la tarjeta "${nextProject.title}".`,
+    summary: `Se actualizó la tarjeta "${nextProject.title}".`,
   });
 
   await updateWorkspaceSync(nextProject.lastUpdate);
